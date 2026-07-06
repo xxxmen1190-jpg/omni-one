@@ -18,7 +18,16 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Orchestrator with env keys or placeholders
+  // Initialize SkillRegistry and Orchestrator with env keys or placeholders
+  useEffect(() => {
+    SkillRegistry.initialize({
+      openai: (import.meta as any).env.VITE_OPENAI_API_KEY || "",
+      anthropic: (import.meta as any).env.VITE_ANTHROPIC_API_KEY || "",
+      gemini: (import.meta as any).env.VITE_GEMINI_API_KEY || "",
+      groq: (import.meta as any).env.VITE_GROQ_API_KEY || "",
+      openrouter: (import.meta as any).env.VITE_OPENROUTER_API_KEY || "",
+    });
+  }, []);
   const orchestrator = new AIOrchestrator({
     openai: (import.meta as any).env.VITE_OPENAI_API_KEY || "",
     anthropic: (import.meta as any).env.VITE_ANTHROPIC_API_KEY || "",
