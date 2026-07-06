@@ -5,76 +5,80 @@ import { GeminiProvider } from "../providers/gemini";
 import { GroqProvider } from "../providers/groq";
 import { OpenRouterProvider } from "../providers/openrouter";
 import { IAIProvider } from "../providers/baseProvider";
+import { PluginManager } from "../system/PluginSystem";
 
 export class SkillRegistry {
   private static skills = new Map<SkillName, Skill>();
   private static providers: Map<ProviderName, IAIProvider> = new Map();
 
   static initialize(apiKeys: Record<string, string>) {
+    const providerConfigs: { name: ProviderName; class: any }[] = [
+      { name: "openai", class: OpenAIProvider },
+      { name: "anthropic", class: AnthropicProvider },
+      { name: "gemini", class: GeminiProvider },
+      { name: "groq", class: GroqProvider },
+      { name: "openrouter", class: OpenRouterProvider },
+    ];
 
-    if (apiKeys.openai) this.providers.set("openai", new OpenAIProvider(apiKeys.openai));
-    if (apiKeys.anthropic) this.providers.set("anthropic", new AnthropicProvider(apiKeys.anthropic));
-    if (apiKeys.gemini) this.providers.set("gemini", new GeminiProvider(apiKeys.gemini));
-    if (apiKeys.groq) this.providers.set("groq", new GroqProvider(apiKeys.groq));
-    if (apiKeys.openrouter) this.providers.set("openrouter", new OpenRouterProvider(apiKeys.openrouter));
-
-    // Register core skills
-    this.registerSkill({
-      name: "chat",
-      description: "Handles general conversational requests.",
-      execute: async (messages: Message[], config: { provider: ProviderName, callbacks: any, signal?: AbortSignal }) => {
-        const provider = this.providers.get(config.provider);
-        if (!provider) throw new Error(`Provider ${config.provider} not found for chat skill.`);
-        return provider.generateStream({ messages, signal: config.signal }, config.callbacks);
-      },
-      supportedProviders: ["openai", "anthropic", "gemini", "groq", "openrouter"],
+    providerConfigs.forEach(({ name, class: ProviderClass }) => {
+      if (apiKeys[name]) {
+        const instance = new ProviderClass(apiKeys[name]);
+        this.providers.set(name, instance);
+        
+        PluginManager.register("provider", {
+          id: `provider-${name}`,
+          name: `${name.toUpperCase()} AI Provider`,
+          version: "1.0.0",
+          initialize: async () => {},
+          shutdown: async () => {}
+        });
+      }
     });
 
-    this.registerSkill({
-      name: "code",
-      description: "Generates or debugs code snippets.",
-      execute: async (messages: Message[], config: { provider: ProviderName, callbacks: any, signal?: AbortSignal }) => {
-        const provider = this.providers.get(config.provider);
-        if (!provider) throw new Error(`Provider ${config.provider} not found for code skill.`);
-        return provider.generateStream({ messages, signal: config.signal }, config.callbacks);
+    // Register core skills as plugins
+    const coreSkills: Skill[] = [
+      {
+        name: "chat",
+        description: "Handles general conversational requests.",
+        execute: async () => {}, // Managed by MultiModelRouter
+        supportedProviders: ["openai", "anthropic", "gemini", "groq", "openrouter"],
       },
-      supportedProviders: ["openai", "anthropic", "gemini", "groq"],
-    });
-
-    this.registerSkill({
-      name: "reasoning",
-      description: "Performs complex reasoning and analysis.",
-      execute: async (messages: Message[], config: { provider: ProviderName, callbacks: any, signal?: AbortSignal }) => {
-        const provider = this.providers.get(config.provider);
-        if (!provider) throw new Error(`Provider ${config.provider} not found for reasoning skill.`);
-        return provider.generateStream({ messages, signal: config.signal }, config.callbacks);
+      {
+        name: "code",
+        description: "Generates or debugs code snippets.",
+        execute: async () => {},
+        supportedProviders: ["openai", "anthropic", "gemini", "groq"],
       },
-      supportedProviders: ["openai", "anthropic", "gemini"],
-    });
-
-    this.registerSkill({
-      name: "search",
-      description: "Performs web searches or retrieves information.",
-      execute: async (messages: Message[], config: { provider: ProviderName, callbacks: any, signal?: AbortSignal }) => {
-        const provider = this.providers.get(config.provider);
-        if (!provider) throw new Error(`Provider ${config.provider} not found for search skill.`);
-        return provider.generateStream({ messages, signal: config.signal }, config.callbacks);
+      {
+        name: "reasoning",
+        description: "Performs complex reasoning and analysis.",
+        execute: async () => {},
+        supportedProviders: ["openai", "anthropic", "gemini"],
       },
-      supportedProviders: ["groq", "openrouter"],
-    });
-
-    this.registerSkill({
-      name: "image",
-      description: "Generates or processes images.",
-      execute: async (messages: Message[], config: { provider: ProviderName, callbacks: any, signal?: AbortSignal }) => {
-        const provider = this.providers.get(config.provider);
-        if (!provider) throw new Error(`Provider ${config.provider} not found for image skill.`);
-        return provider.generateStream({ messages, signal: config.signal }, config.callbacks);
+      {
+        name: "search",
+        description: "Performs web searches or retrieves information.",
+        execute: async () => {},
+        supportedProviders: ["groq", "openrouter"],
       },
-      supportedProviders: ["openai", "gemini"],
-    });
+      {
+        name: "image",
+        description: "Generates or processes images.",
+        execute: async () => {},
+        supportedProviders: ["openai", "gemini"],
+      }
+    ];
 
-    // Add more skills as needed
+    coreSkills.forEach(skill => {
+      this.registerSkill(skill);
+      PluginManager.register("skill", {
+        id: `skill-${skill.name}`,
+        name: `${skill.name.toUpperCase()} Skill`,
+        version: "1.0.0",
+        initialize: async () => {},
+        shutdown: async () => {}
+      });
+    });
   }
 
   static registerSkill(skill: Skill) {

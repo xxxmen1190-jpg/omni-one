@@ -56,12 +56,19 @@ export interface ProviderResponse {
   confidence: number;
   latency: number;
   error?: string;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    cost?: number;
+  };
 }
 
 export interface FusionResult {
   finalResponse: string;
   confidenceScore: number;
   rawResponses: ProviderResponse[];
+  metadata?: Record<string, any>;
 }
 
 export interface OmniBrainDecision {

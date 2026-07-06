@@ -1,52 +1,66 @@
 import { ProviderResponse, FusionResult } from "../../types";
+import { Logger } from "../system/Logger";
 
 export class ResponseFusion {
   static fuseResponses(responses: ProviderResponse[]): FusionResult {
     if (responses.length === 0) {
-      return { finalResponse: "", confidenceScore: 0, rawResponses: [] };
+      return { finalResponse: "No responses received.", confidenceScore: 0, rawResponses: [] };
     }
 
-    // Filter out responses with errors and sort by confidence (descending)
     const validResponses = responses.filter(res => !res.error && res.content.trim() !== "");
-    validResponses.sort((a, b) => b.confidence - a.confidence);
-
+    
     if (validResponses.length === 0) {
-      // If all responses had errors or were empty, return the first error or a generic message
-      const firstError = responses.find(res => res.error)?.error || "No valid responses could be generated.";
-      return { finalResponse: firstError, confidenceScore: 0, rawResponses: responses };
+      const errorMsg = responses.find(res => res.error)?.error || "All providers failed.";
+      return { finalResponse: `Error: ${errorMsg}`, confidenceScore: 0, rawResponses: responses };
     }
 
-    let finalResponse = "";
-    let totalConfidence = 0;
-    let usedResponsesCount = 0;
+    // Sort by confidence and latency (prefer faster if confidence is same)
+    validResponses.sort((a, b) => {
+      if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+      return a.latency - b.latency;
+    });
 
-    // Simple fusion strategy: prioritize higher confidence responses and combine them.
-    // This can be made more sophisticated with NLP techniques for summarization, redundancy removal, etc.
-    for (const res of validResponses) {
-      // Avoid adding duplicate content if a similar response already exists
-      if (!finalResponse.includes(res.content.trim())) {
-        finalResponse += (finalResponse ? "\n\n" : "") + res.content.trim();
-        totalConfidence += res.confidence;
-        usedResponsesCount++;
+    // 1. Quality Ranking & Best Info Selection
+    // For now, we use the highest confidence response as the primary base.
+    const primaryResponse = validResponses[0];
+    let finalResponse = primaryResponse.content.trim();
+    
+    // 2. Deduplication and Integration of unique info from others
+    // This is a simple semantic overlap check (placeholder for more complex NLP)
+    for (let i = 1; i < validResponses.length; i++) {
+      const other = validResponses[i];
+      if (!this.isRedundant(finalResponse, other.content)) {
+        finalResponse += "\n\n---\n\n" + other.content.trim();
       }
     }
 
-    const confidenceScore = usedResponsesCount > 0 ? totalConfidence / usedResponsesCount : 0;
+    // 3. Confidence Score Calculation
+    const avgConfidence = validResponses.reduce((sum, res) => sum + res.confidence, 0) / validResponses.length;
+    const confidenceScore = Math.min(1, avgConfidence * (1 + (validResponses.length - 1) * 0.1)); // Bonus for multiple agreeing providers
 
-    // If after fusion, the response is still empty, use the highest confidence valid response
-    if (!finalResponse && validResponses.length > 0) {
-      finalResponse = validResponses[0].content.trim();
-      // If only one response was used, its confidence is the score
-      if (usedResponsesCount === 0) {
-        totalConfidence = validResponses[0].confidence;
-        usedResponsesCount = 1;
-      }
-    }
+    Logger.info("Response fusion completed", { 
+      providerCount: validResponses.length, 
+      bestProvider: primaryResponse.provider,
+      confidenceScore 
+    });
 
     return {
       finalResponse,
       confidenceScore,
       rawResponses: responses,
     };
+  }
+
+  private static isRedundant(base: string, candidate: string): boolean {
+    // Simple heuristic: if 70% of candidate words are in base, it's redundant
+    const baseWords = new Set(base.toLowerCase().split(/\s+/));
+    const candidateWords = candidate.toLowerCase().split(/\s+/);
+    let overlap = 0;
+    
+    for (const word of candidateWords) {
+      if (baseWords.has(word)) overlap++;
+    }
+    
+    return (overlap / candidateWords.length) > 0.7;
   }
 }
