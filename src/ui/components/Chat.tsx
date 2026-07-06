@@ -20,7 +20,8 @@ const Chat: React.FC = () => {
     stopGenerating,
     agentProgress,
     setAgentProgress,
-    displayMode
+    displayMode,
+    setDisplayMode
   } = useChatStore();
   
   const [input, setInput] = useState("");
@@ -93,6 +94,12 @@ const Chat: React.FC = () => {
           onComplete: (fullText, metadata) => {
             const currentMessages = useChatStore.getState().messages;
             updateLastMessage(fullText, metadata);
+            
+            // Phase 10: Update display mode from smart selection
+            if (metadata?.selectedMode) {
+              setDisplayMode(metadata.selectedMode);
+            }
+            
             setStreaming(false);
             setLoading(false);
             setAbortController(null);

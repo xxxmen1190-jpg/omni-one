@@ -6,6 +6,12 @@ import { memoryStore } from "../memory/memoryStore";
 import { CognitiveLayerOrchestrator } from "../cognitive/CognitiveLayerOrchestrator";
 import { ToolManager } from "../tools/ToolManager";
 import { ToolRegistry } from "../tools/ToolRegistry";
+import { ResponseQualityFilter } from "../quality/ResponseQualityFilter";
+import { FinalDecisionValidator } from "../validation/FinalDecisionValidator";
+import { ErrorRecoveryLayer } from "../error/ErrorRecoveryLayer";
+import { SmartModeSelector } from "../routing/SmartModeSelector";
+import { IntentAnalyzer } from "../classifier/IntentAnalyzer";
+import { TaskClassifier } from "../classifier/TaskClassifier";
 
 export class OmniBrain {
   private apiKeys: Record<string, string>;
@@ -62,35 +68,92 @@ export class OmniBrain {
     Logger.info("OmniBrain processing new request");
 
     try {
-      // Execute the orchestration pipeline
-      const result = await this.pipeline.process(messages, callbacks, signal);
+      const lastMessage = messages[messages.length - 1].content;
+
+      // Phase 10: Smart Mode Selection
+      const intent = IntentAnalyzer.analyze(lastMessage);
+      const taskClassification = TaskClassifier.classify(intent);
+      const selectedMode = SmartModeSelector.selectOptimalMode(
+        lastMessage,
+        intent,
+        taskClassification
+      );
+      Logger.info("Smart mode selected", { mode: selectedMode });
+
+      // Execute the orchestration pipeline with error recovery
+      const result = await ErrorRecoveryLayer.executeWithRecovery(
+        () => this.pipeline.process(messages, callbacks, signal),
+        "OrchestrationPipeline"
+      );
+
+      // Phase 10: Response Quality Filtering
+      const qualityMetrics = ResponseQualityFilter.analyzeQuality(result);
+      Logger.info("Response quality analyzed", qualityMetrics);
+
+      // If quality is poor, attempt reprocessing
+      let finalResult = result;
+      if (ResponseQualityFilter.shouldReprocess(qualityMetrics)) {
+        Logger.info("Quality threshold not met, attempting reprocessing");
+        finalResult = await ErrorRecoveryLayer.executeWithRecovery(
+          () => this.pipeline.process(messages, callbacks, signal),
+          "OrchestrationPipeline (Reprocess)",
+          result // Use original result as fallback
+        );
+      }
+
+      // Phase 10: Final Decision Validation
+      const validation = FinalDecisionValidator.validate(finalResult, lastMessage);
+      Logger.info("Final validation passed", validation);
+
+      // If validation fails, generate fallback
+      let responseToSend = finalResult.finalResponse;
+      if (!validation.isValid && validation.score < 0.4) {
+        Logger.warn("Validation failed, using fallback response");
+        responseToSend = ResponseQualityFilter.generateFallbackResponse(
+          lastMessage,
+          qualityMetrics
+        );
+      }
 
       // Update memory with the final response
       memoryStore.addMessage({ 
         id: `resp-${Date.now()}`, 
         role: "assistant", 
-        content: result.finalResponse, 
+        content: responseToSend, 
         timestamp: Date.now() 
       });
 
+      // Enhance metadata with Phase 10 information
+      const enhancedMetadata = {
+        ...finalResult.metadata,
+        selectedMode,
+        qualityMetrics,
+        validation
+      };
+
       // Notify completion with metadata for Phase 9.5 transparency
-      callbacks.onComplete(result.finalResponse, result.metadata);
+      callbacks.onComplete(responseToSend, enhancedMetadata);
       
       Logger.info("Request processing completed successfully");
-      return result;
+      return { ...finalResult, finalResponse: responseToSend, metadata: enhancedMetadata };
 
     } catch (error: any) {
       Logger.error("OmniBrain processing failed", { error: error.message });
+      ErrorRecoveryLayer.logError(error, { operation: "OmniBrain.processRequest" });
       
-      // Smart Fallback: If pipeline fails, try a direct response as a last resort
-      try {
-        Logger.info("Attempting smart fallback to DIRECT strategy");
-        // This is a simplified fallback, in a real system it would be more robust
-        callbacks.onChunk("I encountered an issue processing your request with the advanced pipeline. Here is a direct response instead...\n\n");
-        // ... implementation of direct fallback ...
-      } catch (fallbackError) {
-        callbacks.onError(error);
-      }
+      // Phase 10: Error-Free UX - Generate graceful fallback
+      const errorClassification = ErrorRecoveryLayer.classifyError(error);
+      const fallbackResponse = ErrorRecoveryLayer.generateFallbackResponse(
+        messages[messages.length - 1].content,
+        errorClassification.type
+      );
+
+      // Send fallback response instead of error
+      callbacks.onComplete(fallbackResponse, {
+        error: true,
+        errorType: errorClassification.type,
+        recoverable: errorClassification.recoverable
+      });
     }
   }
 }

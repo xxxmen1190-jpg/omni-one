@@ -8,6 +8,7 @@ import { ResultFusionLayer } from "../fusion/ResultFusionLayer";
 import { ProviderResponse } from "../../types";
 import { Logger } from "../system/Logger";
 import { memoryStore } from "../memory/memoryStore";
+import { ConversationMemoryManager } from "../memory/ConversationMemoryManager";
 
 export class OrchestrationPipeline {
   private apiKeys: Record<string, string>;
@@ -21,8 +22,16 @@ export class OrchestrationPipeline {
     callbacks: StreamCallbacks,
     signal?: AbortSignal
   ): Promise<FusionResult> {
-    const lastMessage = messages[messages.length - 1].content;
+    let lastMessage = messages[messages.length - 1].content;
     Logger.info("Orchestration Pipeline started", { messageLength: lastMessage.length });
+
+    // Phase 10: Conversation Continuity System
+    const conversationContext = ConversationMemoryManager.buildContext(messages);
+    const conversationState = ConversationMemoryManager.getConversationState(messages);
+    Logger.info("Conversation state", conversationState);
+
+    // Inject context if this is a continuation
+    lastMessage = ConversationMemoryManager.injectContextIntoQuery(lastMessage, conversationContext);
 
     // 1. Intent Analysis
     const context = memoryStore.getConversationContext(messages);
@@ -52,9 +61,15 @@ export class OrchestrationPipeline {
     // 5. Result Fusion (via Result Fusion Layer)
     const fusionResult = await ResultFusionLayer.fuse(executionResults, lastMessage);
 
-    // Phase 9.5: Populate transparency metadata
+    // Phase 9.5 & 10: Populate transparency metadata with conversation context
     fusionResult.metadata = {
       ...fusionResult.metadata,
+      conversationContext: {
+        summary: conversationContext.summary,
+        keyTopics: conversationContext.keyTopics,
+        messageCount: conversationState.messageCount,
+        isActive: conversationState.isActive
+      },
       reasoningTrace: {
         enabled: true,
         steps: [
