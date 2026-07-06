@@ -3,6 +3,7 @@ import useChatStore from "../../store/useChatStore";
 import { AIOrchestrator } from "../../core/ai/orchestrator";
 import { SkillRegistry } from "../../core/skills/skillRegistry";
 import { AgentManager } from "../../core/ai/AgentManager";
+import { OmniBrain } from "../../core/brain/OmniBrain";
 
 const Chat: React.FC = () => {
   const { 
@@ -20,9 +21,10 @@ const Chat: React.FC = () => {
   } = useChatStore();
   
   const [input, setInput] = useState("");
+  const [cognitiveLayerStatus, setCognitiveLayerStatus] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize SkillRegistry and Orchestrator with env keys or placeholders
+  // Initialize SkillRegistry, OmniBrain, and Orchestrator with env keys
   useEffect(() => {
     SkillRegistry.initialize({
       openai: (import.meta as any).env.VITE_OPENAI_API_KEY || "",
@@ -31,6 +33,15 @@ const Chat: React.FC = () => {
       groq: (import.meta as any).env.VITE_GROQ_API_KEY || "",
       openrouter: (import.meta as any).env.VITE_OPENROUTER_API_KEY || "",
     });
+
+    const omniBrain = new OmniBrain({
+      openai: (import.meta as any).env.VITE_OPENAI_API_KEY || "",
+      anthropic: (import.meta as any).env.VITE_ANTHROPIC_API_KEY || "",
+      gemini: (import.meta as any).env.VITE_GEMINI_API_KEY || "",
+      groq: (import.meta as any).env.VITE_GROQ_API_KEY || "",
+      openrouter: (import.meta as any).env.VITE_OPENROUTER_API_KEY || "",
+    });
+    omniBrain.initializeCognitiveLayer();
 
     AgentManager.onProgress((progress) => {
       setAgentProgress(progress);
@@ -145,6 +156,19 @@ const Chat: React.FC = () => {
             </button>
           )}
         </div>
+        {cognitiveLayerStatus && (
+          <div className="absolute -top-32 left-0 right-0 bg-purple-900 border border-purple-700 p-3 rounded-lg shadow-xl">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-bold text-purple-300">Cognitive Layer</span>
+              <span className="text-xs text-purple-400">{cognitiveLayerStatus.status}</span>
+            </div>
+            <div className="space-y-1 text-xs text-purple-200">
+              <div>Tasks: {cognitiveLayerStatus.tasksCompleted}/{cognitiveLayerStatus.totalTasks}</div>
+              <div>Time: {cognitiveLayerStatus.elapsedTime}ms</div>
+              <div>Cost: ${cognitiveLayerStatus.estimatedCost.toFixed(4)}</div>
+            </div>
+          </div>
+        )}
         {agentProgress && (
           <div className="absolute -top-24 left-0 right-0 bg-gray-800 border border-gray-700 p-3 rounded-lg shadow-xl">
             <div className="flex justify-between items-center mb-2">
