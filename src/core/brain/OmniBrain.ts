@@ -73,8 +73,8 @@ export class OmniBrain {
         timestamp: Date.now() 
       });
 
-      // Notify completion
-      callbacks.onComplete(result.finalResponse);
+      // Notify completion with metadata for Phase 9.5 transparency
+      callbacks.onComplete(result.finalResponse, result.metadata);
       
       Logger.info("Request processing completed successfully");
       return result;

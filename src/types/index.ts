@@ -23,7 +23,7 @@ export interface AIProviderConfig {
 
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void;
-  onComplete: (fullText: string) => void;
+  onComplete: (fullText: string, metadata?: Record<string, any>) => void;
   onError: (error: Error) => void;
 }
 

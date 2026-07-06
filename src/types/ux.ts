@@ -7,7 +7,7 @@
  * Display Modes
  */
 
-export type DisplayMode = "simple" | "pro" | "debug";
+export type DisplayMode = "simple" | "pro" | "research" | "agent" | "debug";
 
 /**
  * Execution Timeline Types
@@ -296,6 +296,11 @@ export interface UIConfig {
   enableSourcesPanel: boolean;
   enableLiveIndicators: boolean;
   enableMessageReplay: boolean;
+  enableWebSearch: boolean;
+  enableAgents: boolean;
+  enableMemory: boolean;
+  maxDepth: number; // 1-5
+  speedVsAccuracy: number; // 0-1 (0: speed, 1: accuracy)
   defaultDisplayMode: DisplayMode;
   maxVisibleMessages: number;
   messageCompactThreshold: number; // characters
