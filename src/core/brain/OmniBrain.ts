@@ -1,4 +1,5 @@
 import { Message, OmniBrainDecision, FusionResult, StreamCallbacks } from "../../types";
+import { AgentManager, AgentRegistry } from "../ai/AgentManager";
 import { IntentAnalyzer } from "../classifier/IntentAnalyzer";
 import { TaskClassifier } from "../classifier/TaskClassifier";
 import { SkillRegistry } from "../skills/skillRegistry";
@@ -34,7 +35,17 @@ export class OmniBrain {
       const taskClassification = TaskClassifier.classify(intent);
       Logger.debug("Task classified", { type: taskClassification.taskType });
 
-      // 3. Skill Selection
+      // 3. Agent/Skill Selection
+      // Check if there's a specific agent for this task
+      const agents = AgentRegistry.getAllAgents();
+      const matchingAgent = agents.find(a => a.id.includes(taskClassification.taskType));
+
+      if (matchingAgent) {
+        Logger.info(`Delegating task to agent: ${matchingAgent.name}`);
+        await AgentManager.runAgent(matchingAgent.id, lastMessage, { apiKeys: this.apiKeys });
+        // After agent execution, we might want to continue or return
+      }
+
       const selectedSkill = SkillRegistry.getSkill(taskClassification.taskType);
       if (!selectedSkill) {
         throw new Error(`No skill found for task type: ${taskClassification.taskType}`);

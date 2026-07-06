@@ -1,16 +1,19 @@
 import { create } from "zustand";
 import { Message } from "../types";
+import { AgentProgress } from "../types/agent";
 
 interface ChatState {
   messages: Message[];
   isLoading: boolean;
   isStreaming: boolean;
   abortController: AbortController | null;
+  agentProgress: AgentProgress | null;
   addMessage: (message: Omit<Message, "id" | "timestamp">) => string;
   updateLastMessage: (content: string) => void;
   setLoading: (loading: boolean) => void;
   setStreaming: (streaming: boolean) => void;
   setAbortController: (controller: AbortController | null) => void;
+  setAgentProgress: (progress: AgentProgress | null) => void;
   stopGenerating: () => void;
   clearMessages: () => void;
 }
@@ -20,6 +23,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoading: false,
   isStreaming: false,
   abortController: null,
+  agentProgress: null,
 
   addMessage: (msg) => {
     const id = Math.random().toString(36).substring(7);
@@ -49,6 +53,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setStreaming: (streaming) => set({ isStreaming: streaming }),
 
   setAbortController: (controller) => set({ abortController: controller }),
+
+  setAgentProgress: (progress) => set({ agentProgress: progress }),
 
   stopGenerating: () => {
     const { abortController } = get();

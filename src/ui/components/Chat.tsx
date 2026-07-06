@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import useChatStore from "../../store/useChatStore";
 import { AIOrchestrator } from "../../core/ai/orchestrator";
+import { SkillRegistry } from "../../core/skills/skillRegistry";
+import { AgentManager } from "../../core/ai/AgentManager";
 
 const Chat: React.FC = () => {
   const { 
@@ -12,7 +14,9 @@ const Chat: React.FC = () => {
     isStreaming, 
     setStreaming, 
     setAbortController, 
-    stopGenerating 
+    stopGenerating,
+    agentProgress,
+    setAgentProgress
   } = useChatStore();
   
   const [input, setInput] = useState("");
@@ -26,6 +30,10 @@ const Chat: React.FC = () => {
       gemini: (import.meta as any).env.VITE_GEMINI_API_KEY || "",
       groq: (import.meta as any).env.VITE_GROQ_API_KEY || "",
       openrouter: (import.meta as any).env.VITE_OPENROUTER_API_KEY || "",
+    });
+
+    AgentManager.onProgress((progress) => {
+      setAgentProgress(progress);
     });
   }, []);
   const orchestrator = new AIOrchestrator({
@@ -137,7 +145,26 @@ const Chat: React.FC = () => {
             </button>
           )}
         </div>
-        {isLoading && !isStreaming && (
+        {agentProgress && (
+          <div className="absolute -top-24 left-0 right-0 bg-gray-800 border border-gray-700 p-3 rounded-lg shadow-xl">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-bold text-blue-400">{agentProgress.agentName}</span>
+              <span className="text-xs text-gray-400">{agentProgress.status}</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${agentProgress.progress}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs text-gray-300">
+              <span>{agentProgress.currentStep || agentProgress.message}</span>
+              <span>{agentProgress.progress}%</span>
+            </div>
+          </div>
+        )}
+
+        {isLoading && !isStreaming && !agentProgress && (
           <div className="absolute -top-6 left-0 text-xs text-gray-400">
             AI is thinking...
           </div>

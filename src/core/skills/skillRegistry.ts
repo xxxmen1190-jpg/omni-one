@@ -1,4 +1,5 @@
 import { Skill, SkillName, ProviderName, Message } from "../../types";
+import { GeneralAgent, ResearchAgent, CodingAgent } from "../ai/SpecificAgents";
 import { OpenAIProvider } from "../providers/openai";
 import { AnthropicProvider } from "../providers/anthropic";
 import { GeminiProvider } from "../providers/gemini";
@@ -78,6 +79,17 @@ export class SkillRegistry {
         initialize: async () => {},
         shutdown: async () => {}
       });
+    });
+
+    // Register Agents
+    const agents = [
+      new GeneralAgent(),
+      new ResearchAgent(),
+      new CodingAgent()
+    ];
+
+    agents.forEach(agent => {
+      PluginManager.register("agent", agent);
     });
   }
 
