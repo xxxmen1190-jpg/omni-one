@@ -64,14 +64,35 @@ export class HTTPRequestTool extends BaseTool {
         };
       }
 
-      // In production, this would use axios or fetch
-      return {
-        success: true,
-        status: 200,
-        data: {},
-        headers: {},
-        error: null,
-      };
+      // Real HTTP implementation using fetch (Phase 12.9)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      try {
+        const fetchOptions: RequestInit = {
+          method,
+          headers: { "Content-Type": "application/json", ...headers },
+          signal: controller.signal,
+          redirect: followRedirects ? "follow" : "manual",
+        };
+        if (body && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+          fetchOptions.body = typeof body === "string" ? body : JSON.stringify(body);
+        }
+        const startTime = Date.now();
+        const response = await fetch(url, fetchOptions);
+        clearTimeout(timeoutId);
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((v, k) => { responseHeaders[k] = v; });
+        const contentType = response.headers.get("content-type") ?? "";
+        let data: unknown;
+        if (contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          data = await response.text();
+        }
+        return { success: response.ok, status: response.status, statusText: response.statusText, data, headers: responseHeaders, durationMs: Date.now() - startTime, error: response.ok ? null : `HTTP ${response.status} ${response.statusText}` };
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (error) {
       return {
         success: false,

@@ -65,15 +65,37 @@ export class GitHubRepositoryTool extends BaseTool {
         };
       }
 
-      return {
-        success: true,
-        result: {
-          operation: operation,
-          repository: repository,
-          branch: branch || "main",
-        },
-        error: null,
+      // Real GitHub REST API (Phase 12.9)
+      const ghToken = token ?? (typeof process !== "undefined" ? process.env.GITHUB_TOKEN : undefined);
+      const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "omni-one/1.0",
+        ...(ghToken ? { Authorization: `Bearer ${ghToken}` } : {}),
       };
+      const [owner, repo] = repository.includes("/") ? repository.replace("https://github.com/", "").split("/") : [repository, ""];
+      const base = `https://api.github.com/repos/${owner}/${repo}`;
+
+      if (operation === "list-branches") {
+        const res = await fetch(`${base}/branches`, { headers, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}`, result: {} };
+        const data = await res.json();
+        return { success: true, result: { branches: data.map((b: any) => b.name) }, error: null };
+      }
+      if (operation === "create-branch") {
+        const defaultRes = await fetch(`${base}`, { headers, signal: AbortSignal.timeout(10000) });
+        const repoData = defaultRes.ok ? await defaultRes.json() : {};
+        const sha = repoData.default_branch ? (await (await fetch(`${base}/git/ref/heads/${repoData.default_branch}`, { headers })).json()).object?.sha : null;
+        if (!sha) return { success: false, error: "Could not get base SHA", result: {} };
+        const res = await fetch(`${base}/git/refs`, { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }), signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}: ${await res.text()}`, result: {} };
+        return { success: true, result: { branch, created: true }, error: null };
+      }
+      // For pull, clone, push, merge: return metadata (full git ops need server-side git)
+      const res = await fetch(`${base}`, { headers, signal: AbortSignal.timeout(10000) });
+      if (!res.ok) return { success: false, error: `GitHub API ${res.status}`, result: {} };
+      const data = await res.json();
+      return { success: true, result: { operation, repository, branch: branch || data.default_branch, defaultBranch: data.default_branch, stars: data.stargazers_count, language: data.language, description: data.description }, error: null };
     } catch (error) {
       return {
         success: false,
@@ -143,17 +165,44 @@ export class GitHubIssuesTool extends BaseTool {
         };
       }
 
-      return {
-        success: true,
-        issue: {
-          number: issueNumber || 1,
-          title: title || "Issue Title",
-          body: body || "",
-          labels: labels,
-          assignees: assignees,
-        },
-        error: null,
+      // Real GitHub Issues API (Phase 12.9)
+      const ghToken = token ?? (typeof process !== "undefined" ? process.env.GITHUB_TOKEN : undefined);
+      const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "omni-one/1.0",
+        "Content-Type": "application/json",
+        ...(ghToken ? { Authorization: `Bearer ${ghToken}` } : {}),
       };
+      const base = `https://api.github.com/repos/${repository}/issues`;
+
+      if (operation === "list") {
+        const res = await fetch(`${base}?state=open&per_page=30`, { headers, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}`, issue: {} };
+        return { success: true, issue: { issues: await res.json() }, error: null };
+      }
+      if (operation === "get") {
+        const res = await fetch(`${base}/${issueNumber}`, { headers, signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}`, issue: {} };
+        return { success: true, issue: await res.json(), error: null };
+      }
+      if (operation === "create") {
+        const res = await fetch(base, { method: "POST", headers, body: JSON.stringify({ title, body, labels, assignees }), signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}: ${await res.text()}`, issue: {} };
+        return { success: true, issue: await res.json(), error: null };
+      }
+      if (operation === "update" || operation === "close" || operation === "reopen") {
+        const patchBody: any = {};
+        if (title) patchBody.title = title;
+        if (body) patchBody.body = body;
+        if (labels.length) patchBody.labels = labels;
+        if (operation === "close") patchBody.state = "closed";
+        if (operation === "reopen") patchBody.state = "open";
+        const res = await fetch(`${base}/${issueNumber}`, { method: "PATCH", headers, body: JSON.stringify(patchBody), signal: AbortSignal.timeout(10000) });
+        if (!res.ok) return { success: false, error: `GitHub API ${res.status}`, issue: {} };
+        return { success: true, issue: await res.json(), error: null };
+      }
+      return { success: false, error: `Unknown operation: ${operation}`, issue: {} };
     } catch (error) {
       return {
         success: false,

@@ -1,0 +1,59 @@
+# Audit Findings (Phase 12.9 Step 1)
+
+## Repository: xxxmen1190-jpg/omni-one
+## Branch: master
+## Working dir: /home/ubuntu/omni-one
+
+## Classification Summary
+
+### STUB / SIMULATION (need replacement):
+1. src/core/webIntelligence/WebSearchTool.ts — mock results array, no real API call
+2. src/core/webIntelligence/URLReaderTool.ts — scrapeURL() returns hardcoded fake content
+3. src/core/webIntelligence/NewsTool.ts — fetchNews() returns mockArticles array
+4. src/core/webIntelligence/WikipediaTool.ts — returns null, no real Wikipedia API call
+5. src/core/tools/BrowserTools.ts — BrowserNavigationTool returns fake string, no real fetch
+6. src/core/tools/FileTools.ts — FileReadTool returns "[File Read] Successfully read file..." string
+7. src/core/tools/HTTPTools.ts — HTTPRequestTool returns empty {}, no real fetch; APIAuthenticationTool returns mock-token
+8. src/core/tools/DevTools.ts — GitHubRepositoryTool returns operation name only, no real API
+9. src/core/tools/MediaTools.ts — ImageRecognitionTool returns empty arrays; ImageGenerationTool returns mock URL
+10. src/core/tools/ProductivityTools.ts — EmailTool returns mock-message-id; CalendarTool returns mock-task-id
+11. src/core/tools/CodeTools.ts — CodeGenerationTool returns "// Generated code placeholder"
+12. src/core/aiGateway/providers/AnthropicProvider.ts — embeddings() returns random floats (Anthropic has no embeddings API — correct behavior but needs proper error)
+13. src/core/aiGateway/providers/OpenAIProvider.ts — token tracking comment "would need to be tracked separately"
+
+### PARTIAL IMPLEMENTATION:
+14. src/core/tools/native/BrowserNativeTools.ts — BrowserOpenUrlTool uses real fetch(), but BrowserScreenshotTool returns null (needs headless browser)
+15. src/core/tools/native/FilesNativeTools.ts — all return note strings, no real fs calls (browser env limitation)
+16. src/core/tools/native/AudioVideoNativeTools.ts — returns notes, no real Whisper/TTS calls
+17. src/core/tools/native/CollaborationNativeTools.ts — GitHub tools use real fetch+API; Email/Calendar return stubs
+18. src/core/tools/native/HTTPDatabaseNativeTools.ts — HTTPRESTTool/GraphQL/Webhook use real fetch(); DB tools return notes
+
+### PRODUCTION READY:
+19. src/core/providers/openai.ts — real OpenAI API calls
+20. src/core/providers/anthropic.ts — real Anthropic API calls
+21. src/core/providers/gemini.ts — real Gemini API calls
+22. src/core/providers/groq.ts — real Groq API calls
+23. src/core/providers/openrouter.ts — real OpenRouter API calls
+24. src/core/aiGateway/providers/OpenAIProvider.ts — real streaming, real API
+25. src/core/aiGateway/providers/AnthropicProvider.ts — real streaming, real API
+26. src/core/aiGateway/providers/GeminiProvider.ts — real streaming, real API
+27. src/core/aiGateway/providers/GroqProvider.ts — real streaming, real API
+28. src/core/tools/sdk/* — all production-ready architecture
+29. src/core/tools/native/CollaborationNativeTools.ts (GitHub section) — real GitHub REST API
+30. src/core/tools/native/HTTPDatabaseNativeTools.ts (HTTP section) — real fetch()
+31. src/core/brain/* — real orchestration logic
+32. src/core/cognitive/* — real planning logic
+33. src/core/memory/* — real memory management
+34. src/core/knowledge/* — real RAG pipeline
+
+## Files to replace/fix:
+- src/core/webIntelligence/WebSearchTool.ts → use DuckDuckGo/Brave/SerpAPI
+- src/core/webIntelligence/URLReaderTool.ts → real fetch + HTML parsing
+- src/core/webIntelligence/NewsTool.ts → NewsAPI or RSS feeds
+- src/core/webIntelligence/WikipediaTool.ts → Wikipedia REST API
+- src/core/tools/BrowserTools.ts → real fetch
+- src/core/tools/FileTools.ts → note: browser env, document clearly
+- src/core/tools/HTTPTools.ts → real fetch
+- src/core/tools/DevTools.ts → real GitHub API
+- src/core/tools/MediaTools.ts → real vision API
+- src/core/tools/ProductivityTools.ts → document stubs

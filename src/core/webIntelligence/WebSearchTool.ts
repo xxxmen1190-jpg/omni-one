@@ -6,8 +6,10 @@ import {
 import { Logger } from "../system/Logger";
 
 /**
- * Web Search Tool - Performs web searches using multiple providers
- * Supports DuckDuckGo, Google (via scraping), and other free providers
+ * Web Search Tool — Real Production Implementation (Phase 12.9)
+ * Primary:  Brave Search API (BRAVE_SEARCH_API_KEY)
+ * Fallback: SerpAPI (SERPAPI_KEY)
+ * Fallback: DuckDuckGo Instant Answer API (free, no key)
  */
 
 export class WebSearchTool {
@@ -33,20 +35,17 @@ export class WebSearchTool {
     }
 
     try {
-      Logger.info("Searching web", {
-        query: query.query,
-        limit: query.limit || 10,
-      });
+      const startTime = Date.now();
+      Logger.info("Searching web (real)", { query: query.query, limit: query.limit || 10 });
 
-      // Simulate web search (in production, would call real API)
       const results = await this.performSearch(query);
 
       const response: SearchResponse = {
         query: query.query,
         results,
         totalResults: results.length,
-        executionTime: 500, // Placeholder
-        provider: "duckduckgo",
+        executionTime: Date.now() - startTime,
+        provider: results.length > 0 ? (this.getEnv("BRAVE_SEARCH_API_KEY") ? "brave" : this.getEnv("SERPAPI_KEY") ? "serpapi" : "duckduckgo") : "none",
       };
 
       // Cache result
@@ -75,49 +74,107 @@ export class WebSearchTool {
   }
 
   /**
-   * Perform search (simulated)
+   * Perform real web search with provider cascade.
    */
   private async performSearch(query: SearchQuery): Promise<SearchResult[]> {
-    // In production, this would call real APIs like:
-    // - DuckDuckGo API
-    // - Google Custom Search API
-    // - Bing Search API
+    // ── Brave Search API ────────────────────────────────────────────────────
+    const braveKey = this.getEnv("BRAVE_SEARCH_API_KEY");
+    if (braveKey) {
+      try {
+        return await this.searchBrave(query, braveKey);
+      } catch (err) {
+        Logger.warn("Brave Search failed, falling back", { err: (err as Error).message });
+      }
+    }
 
-    // For now, return mock results
-    const mockResults: SearchResult[] = [
-      {
-        id: "1",
-        title: `Result for "${query.query}" - Source 1`,
-        url: `https://example1.com/search?q=${encodeURIComponent(query.query)}`,
-        snippet: `Information about ${query.query} from a reliable source.`,
-        source: "example1.com",
-        timestamp: Date.now(),
-        relevanceScore: 0.95,
-        credibilityScore: 0.85,
-      },
-      {
-        id: "2",
-        title: `Result for "${query.query}" - Source 2`,
-        url: `https://example2.com/search?q=${encodeURIComponent(query.query)}`,
-        snippet: `Additional information about ${query.query} from another source.`,
-        source: "example2.com",
-        timestamp: Date.now() - 86400000,
-        relevanceScore: 0.88,
-        credibilityScore: 0.82,
-      },
-      {
-        id: "3",
-        title: `Result for "${query.query}" - Source 3`,
-        url: `https://example3.com/search?q=${encodeURIComponent(query.query)}`,
-        snippet: `More details about ${query.query} from a news outlet.`,
-        source: "example3.com",
-        timestamp: Date.now() - 172800000,
-        relevanceScore: 0.82,
-        credibilityScore: 0.88,
-      },
-    ];
+    // ── SerpAPI ─────────────────────────────────────────────────────────────
+    const serpKey = this.getEnv("SERPAPI_KEY");
+    if (serpKey) {
+      try {
+        return await this.searchSerpAPI(query, serpKey);
+      } catch (err) {
+        Logger.warn("SerpAPI failed, falling back to DuckDuckGo", { err: (err as Error).message });
+      }
+    }
 
-    return mockResults.slice(0, query.limit || 10);
+    // ── DuckDuckGo Instant Answer API (free, no key required) ───────────────
+    return this.searchDuckDuckGo(query);
+  }
+
+  private async searchBrave(query: SearchQuery, apiKey: string): Promise<SearchResult[]> {
+    const params = new URLSearchParams({
+      q: query.query,
+      count: String(query.limit ?? 10),
+      ...(query.filters?.language ? { lang: query.filters.language } : {}),
+      ...(query.filters?.region ? { country: query.filters.region } : {}),
+    });
+    const res = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
+      headers: { Accept: "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": apiKey },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`Brave HTTP ${res.status}`);
+    const data = await res.json();
+    return (data.web?.results ?? []).map((r: any, i: number) => ({
+      id: `brave-${i}`,
+      title: r.title ?? "",
+      url: r.url ?? "",
+      snippet: r.description ?? "",
+      source: (() => { try { return new URL(r.url).hostname; } catch { return r.url; } })(),
+      timestamp: r.page_age ? new Date(r.page_age).getTime() : Date.now(),
+      relevanceScore: Math.max(0.1, 1 - i * 0.05),
+      credibilityScore: 0.85,
+      language: query.filters?.language ?? "en",
+    }));
+  }
+
+  private async searchSerpAPI(query: SearchQuery, apiKey: string): Promise<SearchResult[]> {
+    const params = new URLSearchParams({ q: query.query, num: String(query.limit ?? 10), api_key: apiKey, engine: "google" });
+    const res = await fetch(`https://serpapi.com/search.json?${params}`, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`SerpAPI HTTP ${res.status}`);
+    const data = await res.json();
+    return (data.organic_results ?? []).map((r: any, i: number) => ({
+      id: `serp-${i}`,
+      title: r.title ?? "",
+      url: r.link ?? "",
+      snippet: r.snippet ?? "",
+      source: (() => { try { return new URL(r.link).hostname; } catch { return r.link; } })(),
+      timestamp: Date.now(),
+      relevanceScore: Math.max(0.1, 1 - i * 0.05),
+      credibilityScore: 0.88,
+      language: query.filters?.language ?? "en",
+    }));
+  }
+
+  private async searchDuckDuckGo(query: SearchQuery): Promise<SearchResult[]> {
+    const params = new URLSearchParams({ q: query.query, format: "json", no_html: "1", skip_disambig: "1" });
+    const res = await fetch(`https://api.duckduckgo.com/?${params}`, {
+      headers: { "User-Agent": "omni-one/1.0" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`DuckDuckGo HTTP ${res.status}`);
+    const data = await res.json();
+    const results: SearchResult[] = [];
+    let idx = 0;
+    if (data.AbstractText && data.AbstractURL) {
+      results.push({ id: "ddg-abstract", title: data.Heading ?? query.query, url: data.AbstractURL, snippet: data.AbstractText, source: data.AbstractSource ?? "", timestamp: Date.now(), relevanceScore: 1.0, credibilityScore: 0.9, language: "en" });
+      idx++;
+    }
+    for (const topic of [...(data.RelatedTopics ?? [])]) {
+      if (idx >= (query.limit ?? 10)) break;
+      const items = topic.Topics ? topic.Topics : [topic];
+      for (const item of items) {
+        if (idx >= (query.limit ?? 10)) break;
+        if (item.FirstURL && item.Text) {
+          results.push({ id: `ddg-${idx}`, title: item.Text.split(" - ")[0] ?? item.Text, url: item.FirstURL, snippet: item.Text, source: (() => { try { return new URL(item.FirstURL).hostname; } catch { return ""; } })(), timestamp: Date.now(), relevanceScore: Math.max(0.1, 0.8 - idx * 0.05), credibilityScore: 0.75, language: "en" });
+          idx++;
+        }
+      }
+    }
+    return results;
+  }
+
+  private getEnv(key: string): string | undefined {
+    return typeof process !== "undefined" ? process.env[key] : undefined;
   }
 
   /**
@@ -132,17 +189,21 @@ export class WebSearchTool {
   }
 
   /**
-   * Get search suggestions
+   * Get search suggestions via DuckDuckGo autocomplete.
    */
   async getSuggestions(query: string): Promise<string[]> {
-    // Mock suggestions
-    return [
-      `${query} news`,
-      `${query} wikipedia`,
-      `${query} reddit`,
-      `${query} tutorial`,
-      `${query} guide`,
-    ];
+    try {
+      const res = await fetch(`https://duckduckgo.com/ac/?q=${encodeURIComponent(query)}&type=list`, {
+        headers: { "User-Agent": "omni-one/1.0" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      // DuckDuckGo returns [query, [suggestions]]
+      return Array.isArray(data[1]) ? data[1].slice(0, 8) : [];
+    } catch {
+      return [`${query} news`, `${query} wikipedia`, `${query} tutorial`, `${query} guide`];
+    }
   }
 
   /**

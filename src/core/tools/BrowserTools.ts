@@ -47,15 +47,32 @@ export class BrowserNavigationTool extends BaseTool {
         };
       }
 
-      // In production, this would call the Manus browser_navigate tool
-      // For now, return a structured response indicating browser navigation capability
-      return {
-        success: true,
-        content: `[Browser Navigation Tool] Successfully navigated to ${url}. In production, this would extract page content via Manus browser capabilities.`,
-        title: "Page Title",
-        url: url,
-        error: null,
-      };
+      // Real implementation: fetch page and extract content (Phase 12.9)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; OmniOneBot/1.0)", Accept: "text/html,*/*" },
+          signal: controller.signal,
+          redirect: "follow",
+        });
+        clearTimeout(timeoutId);
+        if (!res.ok) return { success: false, error: `HTTP ${res.status}`, content: "", title: "", url };
+        const html = await res.text();
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : new URL(url).hostname;
+        // Strip scripts/styles, extract text
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .trim()
+          .slice(0, 30000);
+        return { success: true, content: text, title, url: res.url ?? url, error: null };
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (error) {
       return {
         success: false,

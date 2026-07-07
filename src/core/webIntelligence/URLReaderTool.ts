@@ -2,7 +2,9 @@ import { ScrapedContent, ScrapingTask } from "../../types/webIntelligence";
 import { Logger } from "../system/Logger";
 
 /**
- * URL Reader Tool - Reads and extracts content from URLs
+ * URL Reader Tool — Real Production Implementation (Phase 12.9)
+ * Uses real HTTP fetch with lightweight HTML parsing.
+ * No external dependencies required.
  */
 
 export class URLReaderTool {
@@ -62,47 +64,91 @@ export class URLReaderTool {
   }
 
   /**
-   * Scrape URL
+   * Scrape URL — Real implementation using fetch + regex-based HTML parsing.
+   * Phase 12.9: Replaced mock with real HTTP fetch and structured extraction.
    */
   private async scrapeURL(url: string): Promise<ScrapedContent | null> {
-    // Mock scraping
-    try {
-      const urlObj = new URL(url);
-      const domain = urlObj.hostname;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OmniOneBot/1.0)",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(15000),
+      redirect: "follow",
+    });
 
-      return {
-        url,
-        title: `Content from ${domain}`,
-        content: `This is the extracted content from ${url}. 
-        
-        The page contains relevant information about the topic.
-        Multiple paragraphs of content would be extracted here.
-        
-        Key information and main points are highlighted.`,
-        metadata: {
-          author: "Unknown",
-          publishDate: new Date().toISOString(),
-          description: `Content from ${domain}`,
-          keywords: ["content", "information", "article"],
-          language: "en",
-        },
-        images: [
-          {
-            src: "https://example.com/image1.jpg",
-            alt: "Sample image",
-          },
-        ],
-        links: [
-          {
-            href: "https://example.com/related",
-            text: "Related article",
-          },
-        ],
-        scrapedAt: Date.now(),
-      };
-    } catch (error) {
-      return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    const html = await res.text();
+    const baseUrl = new URL(url);
+
+    // Title
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch ? this.decodeHtml(titleMatch[1].trim()) : baseUrl.hostname;
+
+    // Meta description
+    const descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+    const description = descMatch ? this.decodeHtml(descMatch[1]) : undefined;
+
+    // Author
+    const authorMatch = html.match(/<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i)
+      ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']author["']/i);
+    const author = authorMatch ? this.decodeHtml(authorMatch[1]) : undefined;
+
+    // Publish date
+    const dateMatch = html.match(/<meta[^>]+(?:name|property)=["'](?:article:published_time|datePublished)["'][^>]+content=["']([^"']+)["']/i);
+    const publishDate = dateMatch ? dateMatch[1] : undefined;
+
+    // Keywords
+    const kwMatch = html.match(/<meta[^>]+name=["']keywords["'][^>]+content=["']([^"']+)["']/i);
+    const keywords = kwMatch ? kwMatch[1].split(",").map((k) => k.trim()).filter(Boolean) : [];
+
+    // Body text — strip scripts/styles/nav/footer then remove all tags
+    let bodyHtml = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+      .replace(/<header[\s\S]*?<\/header>/gi, "");
+    const mainMatch = bodyHtml.match(/<(?:main|article)[^>]*>([\s\S]*?)<\/(?:main|article)>/i);
+    if (mainMatch) bodyHtml = mainMatch[1];
+    const content = this.decodeHtml(
+      bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim()
+    ).slice(0, 50000);
+
+    // Links
+    const linkRe = /<a[^>]+href=["']([^"'#][^"']*)["'][^>]*>([^<]*)<\/a>/gi;
+    const links: Array<{ href: string; text: string }> = [];
+    let lm: RegExpExecArray | null;
+    while ((lm = linkRe.exec(html)) !== null && links.length < 30) {
+      try {
+        const href = new URL(lm[1], baseUrl).href;
+        const text = this.decodeHtml(lm[2].trim());
+        if (text && href.startsWith("http")) links.push({ href, text });
+      } catch { /* skip */ }
     }
+
+    // Images
+    const imgRe = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const images: Array<{ src: string; alt?: string }> = [];
+    let im: RegExpExecArray | null;
+    while ((im = imgRe.exec(html)) !== null && images.length < 20) {
+      try {
+        const src = new URL(im[1], baseUrl).href;
+        const altMatch = im[0].match(/alt=["']([^"']*)["']/);
+        if (src.startsWith("http")) images.push({ src, alt: altMatch?.[1] });
+      } catch { /* skip */ }
+    }
+
+    return { url, title, content, html, metadata: { author, publishDate, description, keywords, language: "en" }, images, links, scrapedAt: Date.now() };
+  }
+
+  private decodeHtml(str: string): string {
+    return str
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ")
+      .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c)));
   }
 
   /**

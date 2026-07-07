@@ -2,7 +2,10 @@ import { NewsArticle, NewsResponse } from "../../types/webIntelligence";
 import { Logger } from "../system/Logger";
 
 /**
- * News Tool - Retrieves news articles from multiple sources
+ * News Tool — Real Production Implementation (Phase 12.9)
+ * Primary:  NewsAPI.org (NEWS_API_KEY)
+ * Fallback: GNews API (GNEWS_API_KEY)
+ * Fallback: HackerNews Algolia API (free, no key)
  */
 
 export class NewsTool {
@@ -30,12 +33,13 @@ export class NewsTool {
     try {
       Logger.info("Searching news", { query, limit });
 
+      const startTime = Date.now();
       const articles = await this.fetchNews(query, limit);
 
       const response: NewsResponse = {
         articles,
         totalResults: articles.length,
-        executionTime: 300, // Placeholder
+        executionTime: Date.now() - startTime,
       };
 
       // Cache result
@@ -64,53 +68,92 @@ export class NewsTool {
   }
 
   /**
-   * Fetch news articles
+   * Fetch news articles using real APIs.
+   * Phase 12.9: Replaced mock with real API calls.
    */
   private async fetchNews(query: string, limit: number): Promise<NewsArticle[]> {
-    // Mock news articles
-    const mockArticles: NewsArticle[] = [
-      {
-        id: "1",
-        title: `Breaking: Latest news about ${query}`,
-        content: `This is the latest news about ${query}. Important developments have been reported...`,
-        source: "NewsSource1",
-        url: `https://news1.com/article/${query}`,
-        publishedAt: Date.now(),
-        author: "Reporter Name",
-        category: "Technology",
-        sentiment: "neutral",
-        importance: 95,
-        credibilityScore: 0.9,
-      },
-      {
-        id: "2",
-        title: `Update: ${query} developments`,
-        content: `New updates on ${query} have emerged. Here's what you need to know...`,
-        source: "NewsSource2",
-        url: `https://news2.com/article/${query}`,
-        publishedAt: Date.now() - 3600000,
-        author: "Another Reporter",
-        category: "News",
-        sentiment: "positive",
-        importance: 85,
-        credibilityScore: 0.88,
-      },
-      {
-        id: "3",
-        title: `Analysis: ${query} impact`,
-        content: `Analysis of how ${query} will impact various sectors...`,
-        source: "NewsSource3",
-        url: `https://news3.com/article/${query}`,
-        publishedAt: Date.now() - 7200000,
-        author: "Analyst",
-        category: "Analysis",
-        sentiment: "neutral",
-        importance: 75,
-        credibilityScore: 0.85,
-      },
-    ];
+    // ── NewsAPI.org ───────────────────────────────────────────────────────────────────
+    const newsApiKey = this.getEnv("NEWS_API_KEY");
+    if (newsApiKey) {
+      try {
+        const params = new URLSearchParams({ q: query, pageSize: String(limit), apiKey: newsApiKey, language: "en", sortBy: "publishedAt" });
+        const res = await fetch(`https://newsapi.org/v2/everything?${params}`, { signal: AbortSignal.timeout(10000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.articles?.length > 0) {
+            return data.articles.slice(0, limit).map((a: any, i: number) => ({
+              id: `newsapi-${i}`,
+              title: a.title ?? "",
+              content: a.content ?? a.description ?? "",
+              source: a.source?.name ?? "",
+              url: a.url ?? "",
+              publishedAt: a.publishedAt ? new Date(a.publishedAt).getTime() : Date.now(),
+              author: a.author ?? undefined,
+              category: "News",
+              sentiment: "neutral" as const,
+              importance: Math.max(10, 100 - i * 5),
+              credibilityScore: 0.85,
+              imageUrl: a.urlToImage ?? undefined,
+            }));
+          }
+        }
+      } catch (err) {
+        Logger.warn("NewsAPI failed, trying GNews", { err: (err as Error).message });
+      }
+    }
 
-    return mockArticles.slice(0, limit);
+    // ── GNews API ───────────────────────────────────────────────────────────────────
+    const gnewsKey = this.getEnv("GNEWS_API_KEY");
+    if (gnewsKey) {
+      try {
+        const params = new URLSearchParams({ q: query, max: String(limit), apikey: gnewsKey, lang: "en" });
+        const res = await fetch(`https://gnews.io/api/v4/search?${params}`, { signal: AbortSignal.timeout(10000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.articles?.length > 0) {
+            return data.articles.slice(0, limit).map((a: any, i: number) => ({
+              id: `gnews-${i}`,
+              title: a.title ?? "",
+              content: a.content ?? a.description ?? "",
+              source: a.source?.name ?? "",
+              url: a.url ?? "",
+              publishedAt: a.publishedAt ? new Date(a.publishedAt).getTime() : Date.now(),
+              author: undefined,
+              category: "News",
+              sentiment: "neutral" as const,
+              importance: Math.max(10, 100 - i * 5),
+              credibilityScore: 0.8,
+              imageUrl: a.image ?? undefined,
+            }));
+          }
+        }
+      } catch (err) {
+        Logger.warn("GNews failed, trying HackerNews", { err: (err as Error).message });
+      }
+    }
+
+    // ── HackerNews Algolia API (free, no key) ──────────────────────────────────
+    const params = new URLSearchParams({ query, tags: "story", hitsPerPage: String(limit) });
+    const res = await fetch(`https://hn.algolia.com/api/v1/search?${params}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HackerNews HTTP ${res.status}`);
+    const data = await res.json();
+    return (data.hits ?? []).slice(0, limit).map((h: any, i: number) => ({
+      id: `hn-${h.objectID ?? i}`,
+      title: h.title ?? "",
+      content: h.story_text ?? h.comment_text ?? "",
+      source: "Hacker News",
+      url: h.url ?? `https://news.ycombinator.com/item?id=${h.objectID}`,
+      publishedAt: h.created_at_i ? h.created_at_i * 1000 : Date.now(),
+      author: h.author ?? undefined,
+      category: "Technology",
+      sentiment: "neutral" as const,
+      importance: Math.max(10, Math.min(100, (h.points ?? 0) / 10)),
+      credibilityScore: 0.75,
+    }));
+  }
+
+  private getEnv(key: string): string | undefined {
+    return typeof process !== "undefined" ? process.env[key] : undefined;
   }
 
   /**

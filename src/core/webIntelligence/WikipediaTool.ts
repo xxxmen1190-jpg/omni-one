@@ -2,7 +2,9 @@ import { WikipediaPage } from "../../types/webIntelligence";
 import { Logger } from "../system/Logger";
 
 /**
- * Wikipedia Tool - Retrieves information from Wikipedia
+ * Wikipedia Tool — Real Production Implementation (Phase 12.9)
+ * Uses the Wikipedia REST API v1 (free, no key required).
+ * https://en.wikipedia.org/api/rest_v1/
  */
 
 export class WikipediaTool {
@@ -61,40 +63,70 @@ export class WikipediaTool {
   }
 
   /**
-   * Fetch page
+   * Fetch Wikipedia page using the real REST API v1.
+   * Phase 12.9: Replaced mock with real Wikipedia API calls.
    */
   private async fetchPage(query: string): Promise<WikipediaPage | null> {
-    // Mock Wikipedia page
+    const encoded = encodeURIComponent(query.trim());
+
+    // Step 1: Search for the best matching article title
+    const searchRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encoded}&srlimit=1&format=json&origin=*`,
+      { headers: { "User-Agent": "omni-one/1.0" }, signal: AbortSignal.timeout(10000) }
+    );
+    if (!searchRes.ok) throw new Error(`Wikipedia search HTTP ${searchRes.status}`);
+    const searchData = await searchRes.json();
+    const searchResults = searchData?.query?.search ?? [];
+    if (searchResults.length === 0) return null;
+
+    const pageTitle = searchResults[0].title as string;
+    const encodedTitle = encodeURIComponent(pageTitle);
+
+    // Step 2: Fetch the summary via REST API
+    const summaryRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
+      { headers: { "User-Agent": "omni-one/1.0", Accept: "application/json" }, signal: AbortSignal.timeout(10000) }
+    );
+    if (!summaryRes.ok) throw new Error(`Wikipedia summary HTTP ${summaryRes.status}`);
+    const summaryData = await summaryRes.json();
+
+    // Step 3: Fetch sections via parse API
+    const sectionsRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=parse&page=${encodedTitle}&prop=sections&format=json&origin=*`,
+      { headers: { "User-Agent": "omni-one/1.0" }, signal: AbortSignal.timeout(10000) }
+    );
+    const sectionsData = sectionsRes.ok ? await sectionsRes.json() : null;
+    const rawSections = sectionsData?.parse?.sections ?? [];
+    const sections = rawSections.slice(0, 10).map((s: any) => ({
+      title: s.line ?? s.anchor ?? "",
+      content: s.anchor ?? "",
+    }));
+
+    // Step 4: Fetch full plain text via extracts API
+    const extractRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&titles=${encodedTitle}&prop=extracts&explaintext=1&exsectionformat=plain&format=json&origin=*`,
+      { headers: { "User-Agent": "omni-one/1.0" }, signal: AbortSignal.timeout(15000) }
+    );
+    let fullContent = summaryData.extract ?? summaryData.description ?? "";
+    if (extractRes.ok) {
+      const extractData = await extractRes.json();
+      const pages = extractData?.query?.pages ?? {};
+      const pageContent = Object.values(pages)[0] as any;
+      if (pageContent?.extract) fullContent = pageContent.extract.slice(0, 50000);
+    }
+
     return {
-      id: query.toLowerCase().replace(/\s+/g, "_"),
-      title: query,
-      url: `https://en.wikipedia.org/wiki/${encodeURIComponent(query)}`,
-      summary: `${query} is a topic that has been documented on Wikipedia. This is a summary of the main article about ${query}.`,
-      content: `
-        ${query} is an important topic. This article provides comprehensive information about ${query}.
-        
-        The article covers various aspects including:
-        - History and background
-        - Key concepts and definitions
-        - Current applications
-        - Future developments
-        - Related topics and references
-      `,
-      sections: [
-        {
-          title: "Introduction",
-          content: `Introduction to ${query}...`,
-        },
-        {
-          title: "History",
-          content: `Historical background of ${query}...`,
-        },
-        {
-          title: "Key Concepts",
-          content: `Important concepts related to ${query}...`,
-        },
-      ],
-      lastModified: Date.now(),
+      id: String(summaryData.pageid ?? pageTitle.toLowerCase().replace(/\s+/g, "_")),
+      title: summaryData.title ?? pageTitle,
+      url: summaryData.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodedTitle}`,
+      summary: summaryData.extract_html
+        ? summaryData.extract_html.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim()
+        : summaryData.extract ?? "",
+      content: fullContent,
+      sections,
+      images: summaryData.thumbnail ? [{ url: summaryData.thumbnail.source, caption: summaryData.title }] : [],
+      references: [],
+      lastModified: summaryData.timestamp ? new Date(summaryData.timestamp).getTime() : Date.now(),
     };
   }
 
@@ -115,16 +147,21 @@ export class WikipediaTool {
   }
 
   /**
-   * Get related pages
+   * Get related pages using Wikipedia's "related" REST API.
    */
   async getRelatedPages(query: string): Promise<string[]> {
-    // Mock related pages
-    return [
-      `${query} history`,
-      `${query} applications`,
-      `${query} research`,
-      `${query} technology`,
-    ];
+    try {
+      const encoded = encodeURIComponent(query.trim());
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/related/${encoded}`,
+        { headers: { "User-Agent": "omni-one/1.0", Accept: "application/json" }, signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return (data.pages ?? []).slice(0, 8).map((p: any) => p.title as string);
+    } catch {
+      return [];
+    }
   }
 
   /**
