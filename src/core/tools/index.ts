@@ -55,3 +55,16 @@ export {
   EmailTool as EmailToolEnhanced,
   CalendarTool,
 } from "./DevTools";
+
+// Phase 12 Universal SDK exports
+export * from "./sdk";
+export * from "./sdk/CapabilityRegistryIntegration";
+export * from "./sdk/PermissionSystem";
+export * from "./sdk/ToolPlanner";
+export * from "./sdk/ToolResultFusion";
+
+// Native Tools (Importing this triggers auto-registration)
+export * from "./native";
+
+// Marketplace
+export * from "./marketplace";
