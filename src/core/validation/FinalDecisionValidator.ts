@@ -89,13 +89,11 @@ export class FinalDecisionValidator {
    */
   private static hasErrorIndicators(response: string): boolean {
     const errorPatterns = [
-      /error:/i,
-      /failed to/i,
-      /unable to/i,
-      /exception/i,
-      /undefined/i,
-      /null/i,
-      /cannot process/i,
+      /^error:/i,           // Starts with "error:" (likely a raw error message)
+      /failed to complete/i,
+      /unable to process/i,
+      /unhandled exception/i,
+      /cannot process your request/i,
       /something went wrong/i
     ];
 

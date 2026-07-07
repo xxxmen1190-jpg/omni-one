@@ -2,7 +2,7 @@ import { ToolTask } from "./SmartToolSelector";
 import { WebSearchTool } from "../webIntelligence/WebSearchTool";
 import { WikipediaTool } from "../webIntelligence/WikipediaTool";
 import { NewsTool } from "../webIntelligence/NewsTool";
-import { RAGCore } from "../knowledge/rag/RAGCore";
+import { KnowledgeEngine } from "../knowledge/KnowledgeEngine";
 import { AgentManager } from "../ai/AgentManager";
 import { MultiModelRouter } from "../router/MultiModelRouter";
 import { Logger } from "../system/Logger";
@@ -57,7 +57,7 @@ export class ParallelExecutionBrain {
 
       switch (task.toolName) {
         case "WebSearchTool":
-          const webSearch = new WebSearchTool(apiKeys);
+          const webSearch = new WebSearchTool();
           data = await webSearch.execute(task.input);
           break;
         case "WikipediaTool":
@@ -65,15 +65,18 @@ export class ParallelExecutionBrain {
           data = await wiki.search(task.input);
           break;
         case "NewsTool":
-          const news = new NewsTool(apiKeys);
+          const news = new NewsTool();
           data = await news.search(task.input);
           break;
-        case "RAGCore":
-          const rag = new RAGCore(apiKeys);
-          data = await rag.retrieveAndGenerate(task.input, "");
+        case "RAGCore": {
+          // RAGCore requires VectorStore + EmbeddingGenerator; use KnowledgeEngine which wraps it correctly
+          const ke = new KnowledgeEngine();
+          await ke.initialize();
+          data = await ke.retrieveContext({ query: task.input, maxResults: 5 });
           break;
+        }
         case "AgentManager":
-          data = await AgentManager.runAgent("code", task.input, { apiKeys });
+          data = await AgentManager.runAgent("coding-agent", task.input, { apiKeys });
           break;
         case "MultiModelRouter":
           data = await MultiModelRouter.routeAndExecute("chat", [{ id: "1", role: "user", content: task.input, timestamp: Date.now() }], apiKeys, callbacks, signal);

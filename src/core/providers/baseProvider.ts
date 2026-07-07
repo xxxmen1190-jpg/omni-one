@@ -28,7 +28,7 @@ export abstract class BaseAIProvider implements IAIProvider {
     onChunk: (chunk: string) => void,
     signal?: AbortSignal
   ) {
-    const timeout = (options as any).timeout || 30000;
+    const timeout = 30000; // Default timeout; callers should set via AbortSignal
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -36,9 +36,9 @@ export abstract class BaseAIProvider implements IAIProvider {
     const signals = [controller.signal];
     if (signal) signals.push(signal);
     
-    // Polyfill for AbortSignal.any if not available
-    const combinedSignal = (AbortSignal as any).any 
-      ? (AbortSignal as any).any(signals)
+    // Use AbortSignal.any if available (modern browsers), otherwise fall back to manual implementation
+    const combinedSignal = typeof (AbortSignal as { any?: (...s: AbortSignal[]) => AbortSignal }).any === "function"
+      ? (AbortSignal as { any: (...s: AbortSignal[]) => AbortSignal }).any(...signals)
       : this.anySignal(signals);
 
     try {

@@ -18,31 +18,8 @@ export class GlobalDecisionEngine {
     let fallbackProviders: ProviderName[] = ["openai"];
     let parameters: Record<string, any> = {};
 
-    // Implement Routing Rules (Core Logic)
-    if (userQuery.startsWith("מה זה")) {
-      selectedStrategy = "DIRECT"; // Or RAG_MEMORY if internal knowledge is available
-      skill = "chat";
-    } else if (userQuery.startsWith("מה קורה עכשיו")) {
-      selectedStrategy = "WEB_SEARCH";
-      skill = "search";
-      providers = ["openai"]; // Assuming WebSearchTool uses a single provider for search
-      routingStrategy = "single";
-    } else if (userQuery.startsWith("תחקור לי")) {
-      selectedStrategy = "DEEP_RESEARCH";
-      skill = "search";
-      providers = ["openai", "anthropic"]; // Potentially multiple for cross-validation
-      routingStrategy = "parallel";
-    } else if (userQuery.startsWith("תכתוב לי קוד")) {
-      selectedStrategy = "AGENT_MODE";
-      skill = "code";
-      providers = ["openai"]; // Agents might use specific code-generating models
-      routingStrategy = "single";
-    } else if (userQuery.includes("מי יותר טוב בין")) {
-      selectedStrategy = "WEB_SEARCH"; // Combined with comparison logic later
-      skill = "search";
-      providers = ["openai"];
-      routingStrategy = "parallel"; // For comparing multiple sources
-    } else if (context) {
+    // Implement Routing Rules based on intent type and confidence (language-agnostic)
+    if (context) {
       selectedStrategy = "RAG_MEMORY";
       skill = "chat";
     } else {

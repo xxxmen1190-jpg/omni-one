@@ -69,8 +69,15 @@ export class AgentManager {
     }
   }
 
-  static onProgress(callback: (progress: AgentProgress) => void): void {
+  static onProgress(callback: (progress: AgentProgress) => void): () => void {
     this.progressListeners.push(callback);
+    // Return an unsubscribe function to prevent memory leaks
+    return () => {
+      const idx = this.progressListeners.indexOf(callback);
+      if (idx !== -1) {
+        this.progressListeners.splice(idx, 1);
+      }
+    };
   }
 
   static notifyProgress(progress: AgentProgress): void {

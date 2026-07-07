@@ -57,6 +57,10 @@ export class SmartCache {
 
   static clear(): void {
     this.cache.clear();
+    if (this.cleanupInterval !== null) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
     Logger.info("Cache cleared");
   }
 
