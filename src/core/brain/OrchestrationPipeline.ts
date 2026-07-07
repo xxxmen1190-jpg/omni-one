@@ -10,11 +10,15 @@ import { Logger } from "../system/Logger";
 import { memoryStore } from "../memory/memoryStore";
 import { ConversationMemoryManager } from "../memory/ConversationMemoryManager";
 
+import { RuntimeManager } from "../runtime/RuntimeManager";
+
 export class OrchestrationPipeline {
   private apiKeys: Record<string, string>;
+  private runtimeManager: RuntimeManager;
 
-  constructor(apiKeys: Record<string, string>) {
+  constructor(apiKeys: Record<string, string>, runtimeManager: RuntimeManager) {
     this.apiKeys = apiKeys;
+    this.runtimeManager = runtimeManager;
   }
 
   async process(

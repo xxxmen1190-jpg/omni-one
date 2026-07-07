@@ -12,17 +12,40 @@ import { ErrorRecoveryLayer } from "../error/ErrorRecoveryLayer";
 import { SmartModeSelector } from "../routing/SmartModeSelector";
 import { IntentAnalyzer } from "../classifier/IntentAnalyzer";
 import { TaskClassifier } from "../classifier/TaskClassifier";
+import { FailureRecoverySystem } from "../integration/FailureRecoverySystem";
+import { RuntimeManager } from "../runtime/RuntimeManager";
 
 export class OmniBrain {
   private apiKeys: Record<string, string>;
   private cognitiveLayer?: CognitiveLayerOrchestrator;
   private pipeline: OrchestrationPipeline;
 
+  private runtimeManager: RuntimeManager;
+
   constructor(apiKeys: Record<string, string>) {
     this.apiKeys = apiKeys;
-    this.pipeline = new OrchestrationPipeline(apiKeys);
+    this.runtimeManager = new RuntimeManager();
+    this.pipeline = new OrchestrationPipeline(apiKeys, this.runtimeManager);
+    
+    // Phase 11.6: Initialize all subsystems
+    this.initializeSystems(apiKeys);
+    Logger.info("OmniBrain initialized with all subsystems wired");
+  }
+
+  /**
+   * Initialize all core subsystems
+   */
+  private async initializeSystems(apiKeys: Record<string, string>): Promise<void> {
+    // 1. Initialize Skill Registry (bootstrap providers, skills, agents)
     SkillRegistry.initialize(apiKeys);
-    Logger.info("OmniBrain initialized");
+
+    // 2. Initialize Runtime Manager
+    await this.runtimeManager.initialize();
+
+    // 3. Initialize Cognitive Layer
+    this.initializeCognitiveLayer();
+
+    Logger.info("All core subsystems initialized");
   }
 
   /**
@@ -80,10 +103,15 @@ export class OmniBrain {
       );
       Logger.info("Smart mode selected", { mode: selectedMode });
 
-      // Execute the orchestration pipeline with error recovery
-      const result = await ErrorRecoveryLayer.executeWithRecovery(
-        () => this.pipeline.process(messages, callbacks, signal),
-        "OrchestrationPipeline"
+      // Execute the orchestration pipeline with FailureRecoverySystem integration
+      const result = await FailureRecoverySystem.executeRecovery(
+        async () => {
+          return await ErrorRecoveryLayer.executeWithRecovery(
+            () => this.pipeline.process(messages, callbacks, signal),
+            "OrchestrationPipeline"
+          );
+        },
+        "execution"
       );
 
       // Phase 10: Response Quality Filtering

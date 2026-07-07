@@ -72,7 +72,8 @@ export class ParallelExecutionBrain {
           // RAGCore requires VectorStore + EmbeddingGenerator; use KnowledgeEngine which wraps it correctly
           const ke = new KnowledgeEngine();
           await ke.initialize();
-          data = await ke.retrieveContext({ query: task.input, maxResults: 5 });
+          // Phase 11.6 Fix: KnowledgeEngine.retrieveContext expects (query, userId, conversationId)
+          data = await ke.retrieveContext(task.input);
           break;
         }
         case "AgentManager":

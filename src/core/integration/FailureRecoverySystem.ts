@@ -191,7 +191,39 @@ export class FailureRecoverySystem {
   }
 
   /**
-   * Execute recovery
+   * Execute recovery (Static helper for easy integration)
+   */
+  static async executeRecovery<T>(
+    operation: () => Promise<T>,
+    stage: ExecutionStage = "execution"
+  ): Promise<T> {
+    const system = new FailureRecoverySystem();
+    const context = system.createRecoveryContext(new Error("Initial attempt"), stage);
+    
+    try {
+      return await operation();
+    } catch (error: any) {
+      context.originalError = error;
+      let strategy = system.getNextRecoveryStrategy(context);
+      
+      while (strategy) {
+        const recoveryResult = await system.executeRecovery(context, strategy, async () => {
+          return await operation();
+        });
+        
+        if (recoveryResult.success) {
+          return recoveryResult.result;
+        }
+        
+        strategy = system.getNextRecoveryStrategy(context);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Execute recovery (Instance method)
    */
   async executeRecovery(
     context: FailureRecoveryContext,
