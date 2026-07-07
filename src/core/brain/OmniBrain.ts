@@ -14,6 +14,7 @@ import { IntentAnalyzer } from "../classifier/IntentAnalyzer";
 import { TaskClassifier } from "../classifier/TaskClassifier";
 import { FailureRecoverySystem } from "../integration/FailureRecoverySystem";
 import { RuntimeManager } from "../runtime/RuntimeManager";
+import { initializeToolRegistry } from "../tools/ToolInitializer";
 
 export class OmniBrain {
   private apiKeys: Record<string, string>;
@@ -52,8 +53,11 @@ export class OmniBrain {
    * Initialize Cognitive Layer
    */
   initializeCognitiveLayer(): void {
-    const toolRegistry = new ToolRegistry();
+    // Phase 12.2: Initialize tool registry with all native tools
+    const toolRegistry = initializeToolRegistry();
     const toolManager = new ToolManager(toolRegistry);
+    
+    Logger.info(`Tool Registry initialized with ${toolRegistry.size()} tools`);
     
     this.cognitiveLayer = new CognitiveLayerOrchestrator(toolManager, {
       supervisorConfig: {
@@ -73,7 +77,7 @@ export class OmniBrain {
       },
     });
 
-    Logger.info("Cognitive Layer initialized");
+    Logger.info(`Cognitive Layer initialized with ${toolRegistry.size()} tools`);
   }
 
   /**
