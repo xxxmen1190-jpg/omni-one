@@ -33,4 +33,12 @@ export class ToolRegistry {
   static getAllTools(): ITool[] {
     return Array.from(this.tools.values());
   }
+
+  static get(toolId: string): ITool | undefined {
+    return this.getTool(toolId);
+  }
+
+  static size(): number {
+    return this.tools.size;
+  }
 }

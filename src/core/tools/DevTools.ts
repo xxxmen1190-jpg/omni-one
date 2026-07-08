@@ -258,7 +258,6 @@ export class CodeExecutionTool extends BaseTool {
           success: false,
           error: "Language is required",
           output: "",
-          error: "Language not specified",
           exitCode: 1,
         };
       }
