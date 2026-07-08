@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { APIKeyManager, APIKeyEntry } from "../../core/system/APIKeyManager";
+import { APIKeyManager, APIKeyEntry } from "../../../core/system/APIKeyManager";
 
 export const APIKeyManagementDashboard: React.FC = () => {
   const [keys, setKeys] = useState<APIKeyEntry[]>([]);

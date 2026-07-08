@@ -6,7 +6,7 @@ import { KnowledgeEngine } from "../knowledge/KnowledgeEngine";
 import { AgentManager } from "../ai/AgentManager";
 import { MultiModelRouter } from "../router/MultiModelRouter";
 import { Logger } from "../system/Logger";
-import { StreamCallbacks, ProviderResponse } from "../../types";
+import { StreamCallbacks } from "../../types";
 
 export interface ExecutionResult {
   source: string;
@@ -56,31 +56,41 @@ export class ParallelExecutionBrain {
       let data: any;
 
       switch (task.toolName) {
-        case "WebSearchTool":
+        case "WebSearchTool": {
           const webSearch = new WebSearchTool();
-          data = await webSearch.execute(task.input);
+          data = await webSearch.search({ query: typeof task.input === "string" ? task.input : task.input.query || "" });
           break;
-        case "WikipediaTool":
+        }
+        case "WikipediaTool": {
           const wiki = new WikipediaTool();
-          data = await wiki.search(task.input);
+          data = await wiki.search(typeof task.input === "string" ? task.input : task.input.query || "");
           break;
-        case "NewsTool":
+        }
+        case "NewsTool": {
           const news = new NewsTool();
-          data = await news.search(task.input);
+          data = await news.searchNews(typeof task.input === "string" ? task.input : task.input.query || "");
           break;
+        }
         case "RAGCore": {
-          // RAGCore requires VectorStore + EmbeddingGenerator; use KnowledgeEngine which wraps it correctly
           const ke = new KnowledgeEngine();
-          await ke.initialize();
-          // Phase 11.6 Fix: KnowledgeEngine.retrieveContext expects (query, userId, conversationId)
-          data = await ke.retrieveContext(task.input);
+          data = await ke.retrieveContext(
+            typeof task.input === "string" ? task.input : task.input.query || "",
+            "default-user",
+            "default-session"
+          );
           break;
         }
         case "AgentManager":
           data = await AgentManager.runAgent("coding-agent", task.input, { apiKeys });
           break;
         case "MultiModelRouter":
-          data = await MultiModelRouter.routeAndExecute("chat", [{ id: "1", role: "user", content: task.input, timestamp: Date.now() }], apiKeys, callbacks, signal);
+          data = await MultiModelRouter.routeAndExecute(
+            "chat",
+            [{ id: "1", role: "user", content: typeof task.input === "string" ? task.input : JSON.stringify(task.input), timestamp: Date.now() }],
+            apiKeys,
+            callbacks,
+            signal
+          );
           break;
         default:
           throw new Error(`Unknown tool: ${task.toolName}`);

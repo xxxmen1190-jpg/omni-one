@@ -1,8 +1,9 @@
 import { BaseAIProvider } from "./baseProvider";
+import type { ProviderName } from "../../types";
 import { ProviderRequest, StreamCallbacks } from "../../types";
 
 export class GeminiProvider extends BaseAIProvider {
-  name = "gemini";
+  name: ProviderName = "gemini";
   private model: string;
 
   constructor(apiKey: string, model: string = "gemini-1.5-pro") {

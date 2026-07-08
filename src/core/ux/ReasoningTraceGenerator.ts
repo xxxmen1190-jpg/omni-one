@@ -1,8 +1,5 @@
-import {
-  ReasoningTrace,
-  ReasoningStep,
-  ExecutionContext,
-} from "../../types/ux";
+import { ReasoningTrace, ReasoningStep } from "../../types/ux";
+import { ExecutionContext } from "../../types/integration";
 import { Logger } from "../system/Logger";
 
 /**

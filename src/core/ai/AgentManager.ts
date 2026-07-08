@@ -14,7 +14,7 @@ export class AgentRegistry {
   }
 
   static getAllAgents(): IAgent[] {
-    return PluginManager.getPluginsByCategory("agent") as IAgent[];
+    return PluginManager.getPluginsByCategory("agent") as unknown as IAgent[];
   }
 }
 

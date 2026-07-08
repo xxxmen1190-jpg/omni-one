@@ -24,11 +24,11 @@ export class SystemHealth {
 
     try {
       // Initialize engines for statistics if needed
-      await this.knowledgeEngine.initialize();
+      
       
       const providerStats = Metrics.getAllStats();
       const activeProviders = Object.keys(SkillRegistry.getProviders());
-      const activeAgents = PluginManager.getPluginsByCategory("agent").map(p => p.manifest.name);
+      const activeAgents = PluginManager.getPluginsByCategory("agent").map(p => p.name);
       
       const healthReport = {
         timestamp: Date.now(),
@@ -40,7 +40,7 @@ export class SystemHealth {
           list: activeProviders,
           health: activeProviders.map(p => ({
             name: p,
-            status: ProviderHealth.getStatus(p) ? "available" : "unavailable"
+            status: ProviderHealth.isAvailable(p as import("../../types").ProviderName) ? "available" : "unavailable"
           }))
         },
         

@@ -1,8 +1,8 @@
-import { ITool, ToolExecutionLog, ToolResult, ToolPermission } from "../types";
+import { ITool, ToolExecutionLog, ToolResult } from "../types";
 import { Logger } from "../../system/Logger";
 import { Metrics } from "../../system/Metrics";
-import { PermissionManager } from "../../system/PermissionManager"; // Will create this
-import { ToolRegistry } from "../ToolRegistry"; // Will create this
+import { PermissionManager } from "../../system/PermissionManager";
+import { ToolRegistry } from "../ToolRegistry";
 
 export class UniversalToolExecutor {
   static async execute(
@@ -28,21 +28,18 @@ export class UniversalToolExecutor {
     }
 
     const startTime = Date.now();
-    let result: ToolResult;
+    let result: ToolResult = { success: false, output: null, error: "Execution not started" };
     let retryCount = 0;
-    const maxRetries = 3; // Configurable
-    const initialDelay = 1000; // Configurable
+    const maxRetries = 3;
+    const initialDelay = 1000;
 
     while (retryCount <= maxRetries) {
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), tool.timeoutMs || 60000);
       try {
-        // 2. Timeout Handling (integrated within tool execution or AbortSignal)
+        // 2. Timeout Handling
         const toolSignal = signal || new AbortController().signal;
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), tool.timeoutMs || 60000); // Default 60s
-
-        const combinedSignal = (AbortSignal as any).any 
-          ? (AbortSignal as any).any([toolSignal, timeoutController.signal])
-          : this.anySignal([toolSignal, timeoutController.signal]);
+        const combinedSignal = this.anySignal([toolSignal, timeoutController.signal]);
 
         result = await tool.execute(params, combinedSignal);
         clearTimeout(timeoutId);
@@ -50,8 +47,8 @@ export class UniversalToolExecutor {
       } catch (error: any) {
         clearTimeout(timeoutId);
         Logger.error(`Tool ${tool.name} execution failed`, { toolId, attempt: retryCount + 1, error: error.message });
-        
-        if (error.name === 'AbortError' && timeoutController.signal.aborted) {
+
+        if (error.name === "AbortError" && timeoutController.signal.aborted) {
           result = { success: false, output: null, error: `Tool ${tool.name} timed out.` };
           break; // Do not retry on timeout
         }
@@ -83,24 +80,24 @@ export class UniversalToolExecutor {
       metrics: { retryCount },
     };
     Logger.info(`Tool execution finished: ${tool.name}`, logEntry);
-    Metrics.recordToolExecution(tool.id, duration, result.success); // Need to add recordToolExecution to Metrics
+    Metrics.recordToolExecution(tool.id, duration, result.success);
 
     return result;
   }
 
   private static isRetryableError(error: any): boolean {
-    const msg = error.message.toLowerCase();
+    const msg = (error.message || "").toLowerCase();
     return msg.includes("network error") || msg.includes("service unavailable") || msg.includes("503");
   }
 
   private static anySignal(signals: AbortSignal[]): AbortSignal {
     const controller = new AbortController();
-    for (const signal of signals) {
-      if (signal.aborted) {
+    for (const sig of signals) {
+      if (sig.aborted) {
         controller.abort();
-        return signal;
+        return controller.signal;
       }
-      signal.addEventListener("abort", () => controller.abort(), { once: true });
+      sig.addEventListener("abort", () => controller.abort(), { once: true });
     }
     return controller.signal;
   }

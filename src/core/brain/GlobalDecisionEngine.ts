@@ -11,62 +11,58 @@ export class GlobalDecisionEngine {
   ): OmniBrainDecision {
     Logger.info("Making global decision", { intentType: intent.type, taskType: taskClassification.taskType });
 
-    let selectedStrategy: StrategyType;
-    let skill: SkillName = intent.type as SkillName; // Default to intent type as skill
-    let providers: ProviderName[] = ["openai", "anthropic"]; // Default providers
+    let selectedStrategy: StrategyType = "DIRECT";
+    let skill: SkillName = intent.type as SkillName;
+    let providers: ProviderName[] = ["openai", "anthropic"];
     let routingStrategy: "single" | "parallel" | "sequential" = "single";
     let fallbackProviders: ProviderName[] = ["openai"];
-    let parameters: Record<string, any> = {};
+    const parameters: Record<string, any> = {};
 
-    // Implement Routing Rules based on intent type and confidence (language-agnostic)
-    if (context) {
-      selectedStrategy = "RAG_MEMORY";
-      skill = "chat";
-    } else {
-      // Default strategy based on intent and confidence
-      if (intent.confidence > 0.8 && intent.type === "chat") {
-        selectedStrategy = "DIRECT";
-      } else if (intent.confidence > 0.6 && intent.type === "search") {
-        selectedStrategy = "WEB_SEARCH";
-      } else if (intent.confidence > 0.7 && intent.type === "code") {
-        selectedStrategy = "AGENT_MODE";
-      } else {
-        selectedStrategy = "DIRECT"; // Fallback to direct if no clear intent or low confidence
-      }
-    }
-
-    // Further refine skill and providers based on selected strategy
-    switch (selectedStrategy) {
-      case "DIRECT":
-        skill = "chat";
-        providers = ["openai", "anthropic"];
-        routingStrategy = "single";
+    // Phase 14: Route by intent type first
+    switch (intent.type) {
+      case "vision":
+      case "ocr":
+        selectedStrategy = "VISION";
+        skill = "vision";
+        providers = ["openai", "anthropic", "gemini"];
         break;
-      case "WEB_SEARCH":
-        skill = "search";
-        providers = ["openai"]; // Assuming a tool-based search
-        routingStrategy = "single";
+      case "image":
+        selectedStrategy = "IMAGE_GEN";
+        skill = "image";
+        providers = ["openai", "gemini"];
         break;
-      case "DEEP_RESEARCH":
-        skill = "search";
-        providers = ["openai", "anthropic"];
-        routingStrategy = "parallel";
-        break;
-      case "RAG_MEMORY":
-        skill = "chat";
-        providers = ["openai", "anthropic"];
-        routingStrategy = "single";
-        break;
-      case "AGENT_MODE":
-        skill = "code"; // Agents can be for various skills, defaulting to code for now
+      case "voice":
+        selectedStrategy = "VOICE";
+        skill = "voice";
         providers = ["openai"];
-        routingStrategy = "single";
         break;
+      case "documents":
+        selectedStrategy = "FILE_INTEL";
+        skill = "documents";
+        providers = ["openai", "anthropic"];
+        break;
+      case "search":
+        selectedStrategy = context ? "RAG_MEMORY" : "WEB_SEARCH";
+        skill = "search";
+        providers = ["openai"];
+        break;
+      case "code":
+        selectedStrategy = "AGENT_MODE";
+        skill = "code";
+        providers = ["openai", "anthropic"];
+        break;
+      default:
+        if (context) {
+          selectedStrategy = "RAG_MEMORY";
+          skill = "chat";
+        } else if (intent.confidence > 0.8 && intent.type === "chat") {
+          selectedStrategy = "DIRECT";
+          skill = "chat";
+        } else {
+          selectedStrategy = "DIRECT";
+          skill = "chat";
+        }
     }
-
-    // Smart Fallback (if initial decision is too ambitious or fails)
-    // This will be handled in the Orchestration Pipeline, but the decision can suggest a fallback path.
-    // For now, we'll just ensure fallbackProviders are set.
 
     Logger.debug("Decision made", { selectedStrategy, skill, providers, routingStrategy });
 

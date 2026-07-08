@@ -1,4 +1,4 @@
-import { ProviderName } from "../../types";
+import { ProviderName } from "../../../types";
 
 export type ToolCapability = 
   | "read_file" 

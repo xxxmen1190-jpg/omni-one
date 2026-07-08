@@ -11,7 +11,7 @@ export interface IAIProvider {
 }
 
 export abstract class BaseAIProvider implements IAIProvider {
-  abstract name: string;
+  abstract name: ProviderName;
   protected apiKey: string;
   protected baseUrl?: string;
 
@@ -37,8 +37,9 @@ export abstract class BaseAIProvider implements IAIProvider {
     if (signal) signals.push(signal);
     
     // Use AbortSignal.any if available (modern browsers), otherwise fall back to manual implementation
-    const combinedSignal = typeof (AbortSignal as { any?: (...s: AbortSignal[]) => AbortSignal }).any === "function"
-      ? (AbortSignal as { any: (...s: AbortSignal[]) => AbortSignal }).any(...signals)
+    const AbortSignalAny = AbortSignal as unknown as { any?: (...s: AbortSignal[]) => AbortSignal };
+    const combinedSignal = typeof AbortSignalAny.any === "function"
+      ? AbortSignalAny.any!(...signals)
       : this.anySignal(signals);
 
     try {

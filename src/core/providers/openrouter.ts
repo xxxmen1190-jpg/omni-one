@@ -1,8 +1,9 @@
 import { BaseAIProvider } from "./baseProvider";
+import type { ProviderName } from "../../types";
 import { ProviderRequest, StreamCallbacks } from "../../types";
 
 export class OpenRouterProvider extends BaseAIProvider {
-  name = "openrouter";
+  name: ProviderName = "openrouter";
   private model: string;
 
   constructor(apiKey: string, model: string = "openai/gpt-4o") {

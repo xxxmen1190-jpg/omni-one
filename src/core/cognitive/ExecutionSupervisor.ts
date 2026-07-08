@@ -305,7 +305,7 @@ export class ExecutionSupervisor {
       // Create a new plan with adjusted strategy
       const newPlan = await this.planner.createPlan(
         originalPlan.goal,
-        originalPlan.taskGraph.nodes.values().next().value?.intent
+        originalPlan.taskGraph.nodes.values().next().value?.intent ?? { type: "chat" as const, confidence: 0.5 }
       );
 
       // Optimize for speed since we're already behind

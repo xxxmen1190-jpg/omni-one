@@ -60,7 +60,7 @@ export class EventBus {
     Logger.debug(`Event emitted: ${eventType}`, data);
   }
 
-  static *streamEvents(eventType: EventType): AsyncGenerator<EventPayload> {
+  static async *streamEvents(eventType: EventType): AsyncGenerator<EventPayload> {
     const queue: EventPayload[] = [];
     let resolve: (() => void) | null = null;
 

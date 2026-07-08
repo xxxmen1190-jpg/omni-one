@@ -1,5 +1,6 @@
 export { ToolRegistry } from "./ToolRegistry";
-export { ToolManager, ToolExecutionResult, ToolExecutionContext } from "./ToolManager";
+export { ToolManager } from "./ToolManager";
+export type { ToolExecutionResult, ToolExecutionContext } from "./ToolManager";
 export { BaseTool } from "./BaseTool";
 export { BrowserNavigationTool, HTTPRequestTool, WebScrapingTool } from "./WebTools";
 export { CodeExecutionTool, CodeAnalysisTool, CodeGenerationTool } from "./CodeTools";
@@ -16,7 +17,8 @@ export {
   EmailTool,
   SchedulingTool,
 } from "./ProductivityTools";
-export { ToolPipeline, PipelineStep, PipelineResult } from "./ToolPipeline";
+export { ToolPipeline } from "./ToolPipeline";
+export type { PipelineStep, PipelineResult } from "./ToolPipeline";
 export {
   BrowserNavigationTool as BrowserNavigationToolEnhanced,
   BrowserClickTool,

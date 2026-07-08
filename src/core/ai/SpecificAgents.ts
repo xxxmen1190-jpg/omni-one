@@ -32,10 +32,7 @@ export class ResearchAgent extends BaseAgent {
   description = "Expert in gathering and analyzing information.";
   version = "1.0.0";
   
-  capabilities = {
-    ...this.capabilities,
-    canSearch: true
-  };
+  capabilities = { canPlan: true, canSearch: true, canCode: false, canBrowse: false, canGenerateImages: false };
 
   async execute(input: string, context?: any): Promise<void> {
     this.updateStatus("planning");
@@ -67,10 +64,7 @@ export class CodingAgent extends BaseAgent {
   description = "Expert in writing and debugging code.";
   version = "1.0.0";
   
-  capabilities = {
-    ...this.capabilities,
-    canCode: true
-  };
+  capabilities = { canPlan: true, canSearch: false, canCode: true, canBrowse: false, canGenerateImages: false };
 
   async execute(input: string, context?: any): Promise<void> {
     this.updateStatus("planning");

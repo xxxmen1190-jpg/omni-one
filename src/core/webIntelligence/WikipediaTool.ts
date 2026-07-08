@@ -124,7 +124,7 @@ export class WikipediaTool {
         : summaryData.extract ?? "",
       content: fullContent,
       sections,
-      images: summaryData.thumbnail ? [{ url: summaryData.thumbnail.source, caption: summaryData.title }] : [],
+      images: summaryData.thumbnail ? [{ src: summaryData.thumbnail.source, caption: summaryData.title }] : [],
       references: [],
       lastModified: summaryData.timestamp ? new Date(summaryData.timestamp).getTime() : Date.now(),
     };

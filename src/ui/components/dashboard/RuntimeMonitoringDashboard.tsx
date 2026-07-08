@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Logger } from "../../core/system/Logger";
-import { Metrics } from "../../core/system/Metrics";
-import { ToolRegistry } from "../../core/tools/ToolRegistry";
-import { SkillRegistry } from "../../core/skills/skillRegistry";
-import { LogEntry } from "../../types";
+import { Logger } from "../../../core/system/Logger";
+import { Metrics } from "../../../core/system/Metrics";
+import { ToolRegistry } from "../../../core/tools/ToolRegistry";
+import { SkillRegistry } from "../../../core/skills/skillRegistry";
+import { LogEntry } from "../../../types";
 
 export const RuntimeMonitoringDashboard: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);

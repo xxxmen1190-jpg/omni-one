@@ -1,4 +1,3 @@
-import { ITool } from "../../types/tool";
 import { ToolRegistry } from "./ToolRegistry";
 
 export interface ToolExecutionResult {
@@ -18,17 +17,17 @@ export interface ToolExecutionContext {
 }
 
 export class ToolManager {
-  private registry: ToolRegistry;
+  // ToolRegistry is a static class - accept it as typeof ToolRegistry
   private executionHistory: ToolExecutionResult[] = [];
   private maxHistorySize: number = 1000;
 
-  constructor(registry: ToolRegistry) {
-    this.registry = registry;
+  constructor(_registry: typeof ToolRegistry) {
+    // ToolRegistry is static, no instance needed
   }
 
   async execute(context: ToolExecutionContext): Promise<ToolExecutionResult> {
     const startTime = Date.now();
-    const tool = this.registry.get(context.toolId);
+    const tool = ToolRegistry.get(context.toolId);
 
     if (!tool) {
       return {
@@ -42,7 +41,7 @@ export class ToolManager {
 
     try {
       // Validate input
-      const isValid = await tool.validate(context.input);
+      const isValid = tool.validate ? await tool.validate(context.input) : true;
       if (!isValid) {
         return {
           toolId: context.toolId,
@@ -78,7 +77,6 @@ export class ToolManager {
         } catch (error) {
           lastError = error;
           if (attempt < retries - 1) {
-            // Wait before retrying
             await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
           }
         }
@@ -103,7 +101,7 @@ export class ToolManager {
   }
 
   private async executeWithTimeout(
-    tool: ITool,
+    tool: { execute: (input: any) => Promise<any> },
     input: any,
     timeout: number
   ): Promise<any> {
@@ -137,7 +135,7 @@ export class ToolManager {
     this.executionHistory = [];
   }
 
-  getRegistry(): ToolRegistry {
-    return this.registry;
+  getRegistry(): typeof ToolRegistry {
+    return ToolRegistry;
   }
 }

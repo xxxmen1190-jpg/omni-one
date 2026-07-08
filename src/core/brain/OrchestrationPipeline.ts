@@ -92,7 +92,7 @@ export class OrchestrationPipeline {
           {
             step: 3,
             title: "Tool Planning",
-            reasoning: `Planned ${toolPlan.length} tools for execution: ${toolPlan.map(t => t.tool).join(", ")}.`,
+            reasoning: `Planned ${toolPlan.length} tools for execution: ${toolPlan.map(t => t.toolName).join(", ")}.`,
             decision: decision.routingStrategy
           }
         ],
@@ -114,7 +114,7 @@ export class OrchestrationPipeline {
       sourcesPanel: {
         documents: executionResults.filter(r => r.source === "WebSearch").map(r => ({ id: Math.random().toString(), type: "document", title: "Web Search Result", relevance: 0.9, confidence: 0.85 })),
         memories: [],
-        tools: toolPlan.map(t => ({ id: t.tool, type: "tool", title: t.tool, relevance: 1, confidence: 1 })),
+        tools: toolPlan.map(t => ({ id: t.toolName, type: "tool", title: t.toolName, relevance: 1, confidence: 1 })),
         agents: decision.selectedStrategy === "AGENT_MODE" ? [{ id: "agent-1", type: "agent", title: "Omni Agent", relevance: 1, confidence: 0.95 }] : [],
         entities: [],
         totalSources: toolPlan.length

@@ -1,8 +1,9 @@
 import { BaseAIProvider } from "./baseProvider";
+import type { ProviderName } from "../../types";
 import { ProviderRequest, StreamCallbacks } from "../../types";
 
 export class GroqProvider extends BaseAIProvider {
-  name = "groq";
+  name: ProviderName = "groq";
   private model: string;
 
   constructor(apiKey: string, model: string = "llama-3.1-70b-versatile") {

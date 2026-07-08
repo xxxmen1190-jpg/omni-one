@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { PermissionManager } from "../../core/system/PermissionManager";
-import { ToolPermission, PermissionGrant } from "../../core/tools/types";
-import { AuditLog } from "../../core/system/AuditLog";
+import { PermissionManager } from "../../../core/system/PermissionManager";
+import { ToolPermission, PermissionGrant } from "../../../core/tools/types";
+import { AuditLog } from "../../../core/system/AuditLog";
 
 export const PermissionCenter: React.FC = () => {
   const [grants, setGrants] = useState<PermissionGrant[]>([]);

@@ -155,15 +155,12 @@ export async function syncToolsToCapabilityRegistry(): Promise<void> {
         pluginId: `native-tools-${tool.metadata.category}`,
         version: tool.metadata.version,
         dependencies: tool.metadata.requiredProviders.map((p) => p.name),
-        config: {
-          category: tool.metadata.category,
-          permissions: tool.metadata.permissions,
-          costEstimate: tool.metadata.costEstimate,
-          latencyEstimate: tool.metadata.latencyEstimate,
-        },
-        enabled: true,
-        performance: { avgLatency: tool.metadata.latencyEstimate.typicalMs, successRate: 1, totalCalls: 0 } as any,
+
+        compatibleWith: [],
+        performanceMetrics: { averageExecutionTime: tool.metadata.latencyEstimate?.typicalMs ?? 100, maxExecutionTime: tool.metadata.latencyEstimate?.maxMs ?? 1000, minExecutionTime: 10, successRate: 1, errorRate: 0 },
         reliability: { uptime: 1, errorRate: 0, lastHealthCheck: Date.now() } as any,
+        lastUsed: Date.now(),
+        usageCount: 0,
       });
     } catch {
       // Already registered — skip

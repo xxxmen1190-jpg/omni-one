@@ -1,3 +1,5 @@
+import { UniversalToolExecutor } from "../core/tools/executor/UniversalToolExecutor";
+
 export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
@@ -23,7 +25,7 @@ export interface AIProviderConfig {
 
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void;
-  onComplete: (fullText: string) => void;
+  onComplete: (fullText: string, metadata?: Record<string, any>) => void;
   onError: (error: Error) => void;
 }
 
@@ -72,11 +74,14 @@ export interface FusionResult {
   metadata?: Record<string, any>;
 }
 
+export type StrategyType = "DIRECT" | "WEB_SEARCH" | "DEEP_RESEARCH" | "RAG_MEMORY" | "AGENT_MODE" | "VISION" | "IMAGE_GEN" | "VOICE" | "FILE_INTEL" | "DOC_GEN";
+
 export interface OmniBrainDecision {
   skill: SkillName;
   providers: ProviderName[];
   routingStrategy: "single" | "parallel" | "sequential";
   fallbackProviders: ProviderName[];
+  selectedStrategy: StrategyType;
   parameters?: Record<string, any>;
 }
 

@@ -20,6 +20,7 @@ export class PlanningEngine {
       {
         id: "system",
         role: "system",
+        timestamp: Date.now(),
         content: `You are a planning engine for an AI Agent named ${agentName}. 
         Break down the user's goal into a logical sequence of steps.
         Each step should have a title and a brief description.`
@@ -27,6 +28,7 @@ export class PlanningEngine {
       {
         id: "user",
         role: "user",
+        timestamp: Date.now(),
         content: `Goal: ${goal}\n\nGenerate a multi-step plan.`
       }
     ];

@@ -1,8 +1,9 @@
 import { BaseAIProvider } from "./baseProvider";
+import type { ProviderName } from "../../types";
 import { ProviderRequest, StreamCallbacks } from "../../types";
 
 export class AnthropicProvider extends BaseAIProvider {
-  name = "anthropic";
+  name: ProviderName = "anthropic";
   private model: string;
 
   constructor(apiKey: string, model: string = "claude-3-5-sonnet-20240620") {

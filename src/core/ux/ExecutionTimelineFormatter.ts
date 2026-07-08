@@ -1,8 +1,5 @@
-import {
-  ExecutionTimeline,
-  TimelineStage,
-  ExecutionContext,
-} from "../../types/integration";
+import { ExecutionTimeline, ExecutionContext } from "../../types/integration";
+import { TimelineStage } from "../../types/ux";
 import { ExecutionTimeline as UITimeline, TimelineStage as UIStage } from "../../types/ux";
 import { Logger } from "../system/Logger";
 

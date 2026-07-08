@@ -84,7 +84,7 @@ export class ContextLayerManager {
     // Enforce max context size
     if (context.taskContexts.size > this.maxContextSize) {
       const firstKey = context.taskContexts.keys().next().value;
-      context.taskContexts.delete(firstKey);
+      context.taskContexts.delete(firstKey!);
     }
 
     Logger.debug("Task context added", { graphId, taskId: taskContext.taskId });

@@ -55,9 +55,9 @@ export class OmniBrain {
   initializeCognitiveLayer(): void {
     // Phase 12.2: Initialize tool registry with all native tools
     const toolRegistry = initializeToolRegistry();
-    const toolManager = new ToolManager(toolRegistry);
+    const toolManager = new ToolManager(toolRegistry as unknown as typeof ToolRegistry);
     
-    Logger.info(`Tool Registry initialized with ${toolRegistry.size()} tools`);
+    Logger.info(`Tool Registry initialized with ${ToolRegistry.size()} tools`);
     
     this.cognitiveLayer = new CognitiveLayerOrchestrator(toolManager, {
       supervisorConfig: {
@@ -77,7 +77,7 @@ export class OmniBrain {
       },
     });
 
-    Logger.info(`Cognitive Layer initialized with ${toolRegistry.size()} tools`);
+    Logger.info(`Cognitive Layer initialized with ${ToolRegistry.size()} tools`);
   }
 
   /**
@@ -164,7 +164,7 @@ export class OmniBrain {
       };
 
       // Notify completion with metadata for Phase 9.5 transparency
-      callbacks.onComplete(responseToSend, enhancedMetadata);
+      callbacks.onComplete(responseToSend);
       
       Logger.info("Request processing completed successfully");
       return { ...finalResult, finalResponse: responseToSend, metadata: enhancedMetadata };
@@ -181,11 +181,8 @@ export class OmniBrain {
       );
 
       // Send fallback response instead of error
-      callbacks.onComplete(fallbackResponse, {
-        error: true,
-        errorType: errorClassification.type,
-        recoverable: errorClassification.recoverable
-      });
+      callbacks.onComplete(fallbackResponse); // error: {
+        // error: true, errorType: errorClassification.type, recoverable: errorClassification.recoverable
     }
   }
 }

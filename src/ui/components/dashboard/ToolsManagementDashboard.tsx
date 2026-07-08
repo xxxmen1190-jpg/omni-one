@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { ToolRegistry } from "../../core/tools/ToolRegistry";
-import { ToolDiscovery } from "../../core/tools/ToolDiscovery";
-import { Metrics } from "../../core/system/Metrics";
-import { ITool } from "../../core/tools/types";
+import { ToolRegistry } from "../../../core/tools/ToolRegistry";
+import { ToolDiscovery } from "../../../core/tools/ToolDiscovery";
+import { Metrics } from "../../../core/system/Metrics";
+import { ITool } from "../../../core/tools/types";
 
 export const ToolsManagementDashboard: React.FC = () => {
   const [tools, setTools] = useState<ITool[]>([]);

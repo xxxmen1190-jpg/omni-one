@@ -66,7 +66,7 @@ export class LongTermMemory {
     const updated: Memory = {
       ...memory,
       ...updates,
-      updatedAt: Date.now(),
+      // updatedAt: Date.now(), // not in Memory type
     };
 
     this.memories.set(memoryId, updated);

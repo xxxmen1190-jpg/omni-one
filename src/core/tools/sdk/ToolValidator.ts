@@ -7,8 +7,8 @@
  */
 
 import { ToolSDKRegistry } from "./ToolSDKRegistry";
-import { IToolSDK, ToolExecutionContext } from "./IToolSDK";
-import { Logger } from "../system/Logger";
+import { IToolSDK, ToolExecutionContext, ApiKeyRequirement } from "./IToolSDK";
+import { Logger } from "../../system/Logger";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,10 +53,10 @@ export interface ValidationReport {
 // ─── Validator ────────────────────────────────────────────────────────────────
 
 export class ToolValidator {
-  private registry: ToolSDKRegistry;
+  private registry: typeof ToolSDKRegistry;
 
   constructor() {
-    this.registry = ToolSDKRegistry.getInstance();
+    this.registry = ToolSDKRegistry;
   }
 
   /**
@@ -64,17 +64,17 @@ export class ToolValidator {
    */
   async validateAll(options: { timeout?: number; parallel?: boolean } = {}): Promise<ValidationReport> {
     const { timeout = 15000, parallel = false } = options;
-    const tools = this.registry.getAllTools();
+    const tools = this.registry.getAll();
 
     Logger.info(`ToolValidator: validating ${tools.length} tools`, { parallel });
 
     let results: ToolValidationResult[];
     if (parallel) {
-      results = await Promise.all(tools.map((t) => this.validateTool(t, timeout)));
+      results = await Promise.all(tools.map((t: IToolSDK) => this.validateTool(t, timeout)));
     } else {
       results = [];
       for (const tool of tools) {
-        results.push(await this.validateTool(tool, timeout));
+        results.push(await this.validateTool(tool as IToolSDK, timeout));
       }
     }
 
@@ -108,9 +108,9 @@ export class ToolValidator {
 
     // Check for missing API keys
     const requiredKeys = tool.metadata.requiredApiKeys ?? [];
-    const missingKeys = requiredKeys.filter((k) => !this.getEnv(k));
+    const missingKeys = requiredKeys.filter((k) => !this.getEnv(typeof k === "string" ? k : k.envVar));
     if (missingKeys.length > 0) {
-      notes.push(`Missing API keys: ${missingKeys.join(", ")} — some steps may be skipped`);
+      notes.push(`Missing API keys: ${missingKeys.map((k: any) => typeof k === "string" ? k : k.envVar).join(", ")} — some steps may be skipped`);
     }
 
     // ── Step 1: initialize ────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ export class ToolValidator {
     } else {
       const ctx = this.buildContext(tool);
       steps.push(await this.runStep("execute", timeout, async () => {
-        const result = await tool.execute(sampleInput, ctx);
+        const result = await tool.execute(sampleInput);
         return result;
       }));
     }
@@ -175,9 +175,9 @@ export class ToolValidator {
       overallStatus,
       steps,
       totalDurationMs: Date.now() - startTotal,
-      capabilities: tool.metadata.capabilities ?? [],
-      requiredApiKeys: requiredKeys,
-      missingApiKeys: missingKeys,
+      capabilities: (tool.metadata.capabilities ?? []) as any,
+      requiredApiKeys: requiredKeys as any,
+      missingApiKeys: missingKeys as any,
       notes,
     };
   }
@@ -234,19 +234,19 @@ export class ToolValidator {
 
   private buildContext(tool: IToolSDK): ToolExecutionContext {
     return {
-      sessionId: `validation-${Date.now()}`,
-      userId: "validator",
-      permissions: tool.metadata.permissions ?? [],
-      apiKeys: this.collectApiKeys(tool.metadata.requiredApiKeys ?? []),
+      executionId: `validation-${Date.now()}`,
+      toolId: tool.metadata.id,
+      input: {},
       timeout: 10000,
-    };
+    } as ToolExecutionContext;
   }
 
-  private collectApiKeys(keys: string[]): Record<string, string> {
+  private collectApiKeys(keys: ApiKeyRequirement[] | string[]): Record<string, string> {
     const result: Record<string, string> = {};
     for (const k of keys) {
-      const val = this.getEnv(k);
-      if (val) result[k] = val;
+      const envVar = typeof k === "string" ? k : k.envVar;
+      const val = this.getEnv(envVar);
+      if (val) result[envVar] = val;
     }
     return result;
   }

@@ -1,4 +1,4 @@
-import { SkillName, Message, StreamCallbacks } from "../types";
+import { SkillName, Message, StreamCallbacks } from "../../types";
 import { SkillRegistry } from "./skillRegistry";
 import { EventBus } from "../system/EventBus";
 import { Logger } from "../system/Logger";

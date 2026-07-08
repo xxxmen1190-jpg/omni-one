@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Metrics, ProviderStats } from "../../core/system/Metrics";
-import { ProviderHealth } from "../../core/system/ProviderHealth";
-import { ProviderName } from "../../types";
+import { Metrics, ProviderStats } from "../../../core/system/Metrics";
+import { ProviderHealth } from "../../../core/system/ProviderHealth";
+import { ProviderName } from "../../../types";
 
 export const ProviderDashboard: React.FC = () => {
   const [providerStats, setProviderStats] = useState<Record<ProviderName, ProviderStats>>({} as any);
