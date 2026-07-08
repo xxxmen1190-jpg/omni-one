@@ -40,8 +40,9 @@ export type SkillName = IntentType; // SkillName is also derived from IntentType
 export interface Skill {
   name: SkillName;
   description: string;
-  execute: (input: any, config: any) => Promise<any>;
+  execute: (input: any, context: { executor: typeof UniversalToolExecutor, signal?: AbortSignal, callbacks?: StreamCallbacks }) => Promise<any>;
   supportedProviders: ProviderName[];
+  supportedTools?: string[]; // New: Tools that this skill can use
 }
 
 export interface TaskClassification {
@@ -100,3 +101,5 @@ export interface RequestQueueItem {
   reject: (reason?: any) => void;
   signal: AbortSignal;
 }
+
+export * from "../core/tools/types";

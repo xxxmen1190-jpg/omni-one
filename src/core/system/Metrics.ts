@@ -13,8 +13,18 @@ export interface ProviderStats {
   cost?: number;
 }
 
+export interface ToolStats {
+  executions: number;
+  successes: number;
+  failures: number;
+  totalDuration: number;
+  avgDuration: number;
+  successRate: number;
+}
+
 export class Metrics {
   private static providerStats = new Map<ProviderName, ProviderStats>();
+  private static toolStats = new Map<string, ToolStats>();
 
   private static getOrCreateStats(provider: ProviderName): ProviderStats {
     if (!this.providerStats.has(provider)) {
@@ -49,6 +59,46 @@ export class Metrics {
     if (cost) stats.cost = (stats.cost || 0) + cost;
 
     Logger.debug(`Metrics updated for ${provider}`, { stats });
+  }
+
+  static recordToolExecution(toolId: string, duration: number, success: boolean): void {
+    const stats = this.getOrCreateToolStats(toolId);
+    stats.executions++;
+    if (success) {
+      stats.successes++;
+    } else {
+      stats.failures++;
+    }
+    stats.totalDuration += duration;
+    stats.avgDuration = stats.totalDuration / stats.executions;
+    stats.successRate = stats.successes / stats.executions;
+    Logger.debug(`Metrics updated for tool ${toolId}`, { stats });
+  }
+
+  private static getOrCreateToolStats(toolId: string): ToolStats {
+    if (!this.toolStats.has(toolId)) {
+      this.toolStats.set(toolId, {
+        executions: 0,
+        successes: 0,
+        failures: 0,
+        totalDuration: 0,
+        avgDuration: 0,
+        successRate: 0,
+      });
+    }
+    return this.toolStats.get(toolId)!;
+  }
+
+  static getToolStats(toolId: string): ToolStats | undefined {
+    return this.toolStats.get(toolId);
+  }
+
+  static getAllToolStats(): Record<string, ToolStats> {
+    const all: any = {};
+    for (const [id, stats] of this.toolStats.entries()) {
+      all[id] = stats;
+    }
+    return all;
   }
 
   static getStats(provider: ProviderName): ProviderStats | undefined {
