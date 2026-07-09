@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, Suspense } from "react";
+const DashboardPanel = React.lazy(() => import("./DashboardPanel"));
 import useChatStore from "../../store/useChatStore";
 import { AIOrchestrator } from "../../core/ai/orchestrator";
 import { SkillRegistry } from "../../core/skills/skillRegistry";
@@ -48,6 +49,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [showExportMenu, setShowExportMenu] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -219,7 +221,22 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-800 text-ink-500 uppercase tracking-wider">{displayMode}</span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDashboard(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-ink-400 hover:text-ink-200 hover:bg-ink-800 border border-ink-700/50 transition-colors"
+              title="System Dashboards"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" /></svg>
+              Dashboards
+            </button>
+          </div>
         </header>
+        {showDashboard && (
+          <Suspense fallback={null}>
+            <DashboardPanel onClose={() => setShowDashboard(false)} />
+          </Suspense>
+        )}
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 scrollbar-thin">

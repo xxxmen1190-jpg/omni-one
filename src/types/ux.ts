@@ -179,6 +179,11 @@ export interface EnhancedChatMessage {
   liveIndicator?: LiveIndicator;
   debugMetrics?: DebugMetrics;
   
+  // Workspace rendering
+  workspaceType?: string;
+  workspaceLanguage?: string;
+  generatedImages?: string[];
+
   // Display settings
   displayMode: DisplayMode;
   expanded?: boolean;

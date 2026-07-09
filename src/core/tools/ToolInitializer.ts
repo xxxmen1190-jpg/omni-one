@@ -1,130 +1,150 @@
+/**
+ * ToolInitializer — Phase 12+ Production Tool Registry
+ *
+ * Registers ALL native (production-ready) tools from Phase 12.2 native library.
+ * Old mock-based tools (WebTools, CodeTools, VisionTools, etc.) are intentionally
+ * NOT registered here — they are superseded by the native tool library.
+ */
 import { ToolRegistry } from "./ToolRegistry";
-import { BrowserNavigationTool, HTTPRequestTool, WebScrapingTool } from "./WebTools";
-import { CodeExecutionTool, CodeAnalysisTool, CodeGenerationTool } from "./CodeTools";
-import {
-  ImageRecognitionTool,
-  ImageGenerationTool,
-  OCRTool,
-  VideoAnalysisTool,
-} from "./VisionTools";
-import {
-  DocumentProcessingTool,
-  DataProcessingTool,
-  TextProcessingTool,
-  EmailTool,
-  SchedulingTool,
-} from "./ProductivityTools";
-import {
-  BrowserNavigationTool as BrowserNavigationToolEnhanced,
-  BrowserClickTool,
-  BrowserInputTool,
-  BrowserScrollTool,
-  WebScrapingTool as WebScrapingToolEnhanced,
-} from "./BrowserTools";
-import {
-  FileReadTool,
-  FileWriteTool,
-  FileListTool,
-  FileDeleteTool,
-  FileCopyTool,
-  FileSearchTool,
-} from "./FileTools";
-import {
-  HTTPRequestTool as HTTPRequestToolEnhanced,
-  JSONParserTool,
-  RESTAPITool,
-  GraphQLTool,
-  APIAuthenticationTool,
-} from "./HTTPTools";
-import {
-  ImageRecognitionTool as ImageRecognitionToolEnhanced,
-  ImageGenerationTool as ImageGenerationToolEnhanced,
-  OCRTool as OCRToolEnhanced,
-  VideoAnalysisTool as VideoAnalysisToolEnhanced,
-  ImageProcessingTool,
-  AudioProcessingTool,
-} from "./MediaTools";
-import {
-  GitHubRepositoryTool,
-  GitHubIssuesTool,
-  CodeExecutionTool as CodeExecutionToolEnhanced,
-  DatabaseQueryTool,
-  EmailTool as EmailToolEnhanced,
-  CalendarTool,
-} from "./DevTools";
 import { Logger } from "../system/Logger";
 
+// Phase 12.2 Native Tool Library
+import {
+  BrowserOpenUrlTool,
+  BrowserReadPageTool,
+  BrowserExtractTextTool,
+  BrowserExtractTablesTool,
+  BrowserExtractLinksTool,
+  BrowserScreenshotTool,
+} from "./native/BrowserNativeTools";
+
+import {
+  FilesReadPDFTool,
+  FilesReadDOCXTool,
+  FilesReadTXTTool,
+  FilesReadCSVTool,
+  FilesReadExcelTool,
+  FilesReadMarkdownTool,
+  FilesReadJSONTool,
+  ImagesOCRTool,
+  ImagesMetadataTool,
+  ImagesResizeTool,
+  ImagesCropTool,
+  ImagesFormatConversionTool,
+} from "./native/FilesNativeTools";
+
+import {
+  AudioSpeechToTextTool,
+  AudioTextToSpeechTool,
+  VideoMetadataTool,
+  VideoFrameExtractionTool,
+} from "./native/AudioVideoNativeTools";
+
+import {
+  GitHubReadRepositoryTool,
+  GitHubReadFileTool,
+  GitHubCreateCommitTool,
+  GitHubCreatePullRequestTool,
+  GitHubIssuesTool,
+  EmailSendTool,
+  EmailReadTool,
+  EmailSearchTool,
+  CalendarCreateEventTool,
+  CalendarUpdateEventTool,
+  CalendarDeleteEventTool,
+} from "./native/CollaborationNativeTools";
+
+import {
+  HTTPRESTTool,
+  HTTPGraphQLTool,
+  HTTPWebhookTool,
+  DatabaseQueryTool,
+  DatabaseSQLiteTool,
+  DatabasePostgreSQLTool,
+  DatabaseMySQLTool,
+} from "./native/HTTPDatabaseNativeTools";
+
+// ─── ToolInitializer ─────────────────────────────────────────────────────────
 export class ToolInitializer {
+  private static initialized = false;
+
   static async initialize(): Promise<void> {
-    Logger.info("Initializing Tool Registry...");
+    if (this.initialized) {
+      Logger.debug("Tool Registry already initialized, skipping.");
+      return;
+    }
+
+    Logger.info("Initializing Tool Registry with native production tools...");
 
     const tools = [
-      new BrowserNavigationTool(),
-      new HTTPRequestTool(),
-      new WebScrapingTool(),
+      // Browser
+      new BrowserOpenUrlTool(),
+      new BrowserReadPageTool(),
+      new BrowserExtractTextTool(),
+      new BrowserExtractTablesTool(),
+      new BrowserExtractLinksTool(),
+      new BrowserScreenshotTool(),
+      // Files
+      new FilesReadPDFTool(),
+      new FilesReadDOCXTool(),
+      new FilesReadTXTTool(),
+      new FilesReadCSVTool(),
+      new FilesReadExcelTool(),
+      new FilesReadMarkdownTool(),
+      new FilesReadJSONTool(),
+      // Images
+      new ImagesOCRTool(),
+      new ImagesMetadataTool(),
+      new ImagesResizeTool(),
+      new ImagesCropTool(),
+      new ImagesFormatConversionTool(),
+      // Audio/Video
+      new AudioSpeechToTextTool(),
+      new AudioTextToSpeechTool(),
+      new VideoMetadataTool(),
+      new VideoFrameExtractionTool(),
+      // Collaboration
+      new GitHubReadRepositoryTool(),
+      new GitHubReadFileTool(),
+      new GitHubCreateCommitTool(),
+      new GitHubCreatePullRequestTool(),
+      new GitHubIssuesTool(),
+      new EmailSendTool(),
+      new EmailReadTool(),
+      new EmailSearchTool(),
+      new CalendarCreateEventTool(),
+      new CalendarUpdateEventTool(),
+      new CalendarDeleteEventTool(),
+      // HTTP/Database
+      new HTTPRESTTool(),
+      new HTTPGraphQLTool(),
+      new HTTPWebhookTool(),
+      new DatabaseQueryTool(),
+      new DatabaseSQLiteTool(),
+      new DatabasePostgreSQLTool(),
+      new DatabaseMySQLTool(),
     ];
 
     for (const tool of tools) {
       await ToolRegistry.registerTool(tool);
     }
 
-    Logger.info(`Tool Registry initialized with ${tools.length} tools.`);
+    this.initialized = true;
+    Logger.info(`Tool Registry initialized with ${ToolRegistry.size()} native tools.`);
+  }
+
+  static reset(): void {
+    this.initialized = false;
   }
 }
 
-export function initializeToolRegistry(): ToolRegistry {
-  Logger.info("Initializing Tool Registry...");
-
-  const tools = [
-    new BrowserNavigationTool(),
-    new HTTPRequestTool(),
-    new WebScrapingTool(),
-    new CodeExecutionTool(),
-    new CodeAnalysisTool(),
-    new CodeGenerationTool(),
-    new ImageRecognitionTool(),
-    new ImageGenerationTool(),
-    new OCRTool(),
-    new VideoAnalysisTool(),
-    new DocumentProcessingTool(),
-    new DataProcessingTool(),
-    new TextProcessingTool(),
-    new EmailTool(),
-    new SchedulingTool(),
-    new BrowserNavigationToolEnhanced(),
-    new BrowserClickTool(),
-    new BrowserInputTool(),
-    new BrowserScrollTool(),
-    new WebScrapingToolEnhanced(),
-    new FileReadTool(),
-    new FileWriteTool(),
-    new FileListTool(),
-    new FileDeleteTool(),
-    new FileCopyTool(),
-    new FileSearchTool(),
-    new HTTPRequestToolEnhanced(),
-    new JSONParserTool(),
-    new RESTAPITool(),
-    new GraphQLTool(),
-    new APIAuthenticationTool(),
-    new ImageRecognitionToolEnhanced(),
-    new ImageGenerationToolEnhanced(),
-    new OCRToolEnhanced(),
-    new VideoAnalysisToolEnhanced(),
-    new ImageProcessingTool(),
-    new AudioProcessingTool(),
-    new GitHubRepositoryTool(),
-    new GitHubIssuesTool(),
-    new CodeExecutionToolEnhanced(),
-    new DatabaseQueryTool(),
-    new EmailToolEnhanced(),
-    new CalendarTool(),
-  ];
-
-  for (const tool of tools) {
-    ToolRegistry.registerTool(tool);
-  }
-
-  Logger.info(`Tool Registry initialized with ${ToolRegistry.size()} tools.`);
+/**
+ * Legacy function kept for backward compatibility with OmniBrain.
+ * Delegates to ToolInitializer.initialize() asynchronously.
+ */
+export function initializeToolRegistry(): typeof ToolRegistry {
+  ToolInitializer.initialize().catch((err) => {
+    Logger.error("Failed to initialize tool registry", { error: err });
+  });
   return ToolRegistry;
 }
