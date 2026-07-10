@@ -37,6 +37,19 @@ export interface AppConfig {
   redis: {
     url?: string;
   };
+  auth: {
+    jwtSecret: string;
+    jwtAccessExpiration: string;
+    jwtRefreshExpiration: string;
+    cookieSecret: string;
+  };
+  oauth: {
+    google?: { clientId: string; clientSecret: string };
+    github?: { clientId: string; clientSecret: string };
+  };
+  encryption: {
+    key: string;
+  };
   storage: {
     provider: "local" | "s3";
     path: string;

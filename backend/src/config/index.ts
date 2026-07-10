@@ -60,6 +60,18 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().url().optional(),
 
+  JWT_SECRET: z.string().default("dev-secret"),
+  JWT_ACCESS_EXPIRATION: z.string().default("15m"),
+  JWT_REFRESH_EXPIRATION: z.string().default("7d"),
+  COOKIE_SECRET: z.string().default("dev-cookie-secret"),
+
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+
+  ENCRYPTION_KEY: z.string().length(32).default("32-char-encryption-key-!!-012345"),
+
   STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
   STORAGE_PATH: z.string().default("./storage"),
   S3_REGION: z.string().optional(),
@@ -114,6 +126,19 @@ export const config: AppConfig = {
   },
   redis: {
     url: env.REDIS_URL,
+  },
+  auth: {
+    jwtSecret: env.JWT_SECRET,
+    jwtAccessExpiration: env.JWT_ACCESS_EXPIRATION,
+    jwtRefreshExpiration: env.JWT_REFRESH_EXPIRATION,
+    cookieSecret: env.COOKIE_SECRET,
+  },
+  oauth: {
+    google: env.GOOGLE_CLIENT_ID ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET ?? "" } : undefined,
+    github: env.GITHUB_CLIENT_ID ? { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET ?? "" } : undefined,
+  },
+  encryption: {
+    key: env.ENCRYPTION_KEY,
   },
   storage: {
     provider: env.STORAGE_PROVIDER as "local" | "s3",

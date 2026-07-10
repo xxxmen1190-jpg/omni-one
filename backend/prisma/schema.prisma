@@ -14,36 +14,89 @@ datasource db {
 // ─── User & Identity ──────────────────────────────────────────────────────────
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  name          String?
-  avatarUrl     String?
-  role          UserRole       @default(USER)
-  status        UserStatus     @default(ACTIVE)
-  settings      Json?          // User-specific UI/AI settings
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String?        // Null for OAuth-only users
+  username        String?        @unique
+  displayName     String?
+  avatarUrl       String?
+  bio             String?        @db.Text
+  timezone        String         @default("UTC")
+  language        String         @default("en")
   
-  conversations Conversation[]
-  projects      Project[]
-  apiKeys       ApiKey[]
-  notifications Notification[]
-  auditLogs     AuditLog[]
+  role            UserRole       @default(USER)
+  status          UserStatus     @default(ACTIVE)
+  plan            String         @default("FREE")
   
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  emailVerified   Boolean        @default(false)
+  lastSeenAt      DateTime?
+  preferences     Json?          // Theme, AI defaults, Privacy, etc.
+  
+  conversations   Conversation[]
+  projects        Project[]
+  apiKeys         ApiKey[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]
+  sessions        Session[]
+  oauthAccounts   OAuthAccount[]
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([email])
+  @@index([username])
 }
 
 enum UserRole {
-  USER
+  OWNER
   ADMIN
-  SYSTEM
+  USER
+  GUEST
 }
 
 enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+  PENDING_VERIFICATION
+}
+
+model OAuthAccount {
+  id                String   @id @default(uuid())
+  userId            String
+  provider          String   // "google" | "github"
+  providerUserId    String   // ID from provider
+  accessToken       String?  @db.Text
+  refreshToken      String?  @db.Text
+  expiresAt         DateTime?
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  userId        String
+  tokenHash     String    @unique
+  deviceName    String?
+  browser       String?
+  os            String?
+  ip            String?
+  country       String?
+  isActive      Boolean   @default(true)
+  lastUsedAt    DateTime  @default(now())
+  expiresAt     DateTime
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ─── Chat & Messaging ─────────────────────────────────────────────────────────

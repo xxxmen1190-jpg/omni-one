@@ -11,6 +11,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import cookie from "@fastify/cookie";
 
 import { config } from "../config/index.js";
 import { logger } from "../utils/logger.js";
@@ -24,6 +25,8 @@ import { statusRoutes } from "../api/routes/status.js";
 import { chatRoutes } from "../api/routes/chat.js";
 import { toolsRoutes } from "../api/routes/tools.js";
 import { agentsRoutes } from "../api/routes/agents.js";
+import { authRoutes } from "../api/routes/auth.js";
+import { userRoutes } from "../api/routes/users.js";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -55,6 +58,12 @@ export async function buildApp() {
     exposedHeaders: ["x-request-id"],
     credentials: true,
     maxAge: 86400, // 24 hours preflight cache
+  });
+
+  // ── Security: Cookies ───────────────────────────────────────────────────────
+  await fastify.register(cookie, {
+    secret: config.auth.cookieSecret,
+    parseOptions: {},
   });
 
   // ── Security: Rate Limiting ─────────────────────────────────────────────────
@@ -139,6 +148,8 @@ export async function buildApp() {
   await fastify.register(chatRoutes, { prefix: "/" });
   await fastify.register(toolsRoutes, { prefix: "/" });
   await fastify.register(agentsRoutes, { prefix: "/" });
+  await fastify.register(authRoutes, { prefix: "/" });
+  await fastify.register(userRoutes, { prefix: "/" });
 
   // ── Error Handler ───────────────────────────────────────────────────────────
   fastify.setErrorHandler(errorHandler);
