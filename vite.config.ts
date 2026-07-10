@@ -6,6 +6,11 @@ export default defineConfig({
   build: {
     // Raise warning limit — some vendor chunks are legitimately large
     chunkSizeWarningLimit: 600,
+    // Target modern browsers for smaller output
+    target: "es2020",
+    // Minify with esbuild (faster than terser, good enough for production)
+    minify: "esbuild",
+    // Hashed filenames for long-term browser caching
     rollupOptions: {
       output: {
         manualChunks: {
@@ -32,7 +37,28 @@ export default defineConfig({
           // Drag and drop
           "vendor-dnd": ["react-dropzone"],
         },
+        // Hashed filenames for long-term caching
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
+    },
+  },
+  // Pre-bundle critical dependencies for faster dev startup
+  optimizeDeps: {
+    include: ["react", "react-dom", "zustand"],
+    exclude: ["@monaco-editor/react", "monaco-editor"],
+  },
+  server: {
+    // Warm up frequently used modules on dev server start
+    warmup: {
+      clientFiles: [
+        "./src/app/App.tsx",
+        "./src/app/main.tsx",
+        "./src/ui/components/Chat.tsx",
+        "./src/ui/components/Sidebar.tsx",
+        "./src/ui/components/auth/AuthScreen.tsx",
+      ],
     },
   },
 });

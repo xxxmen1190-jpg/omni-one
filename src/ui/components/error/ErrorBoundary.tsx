@@ -6,6 +6,7 @@
  */
 
 import React from "react";
+import { ErrorTracker } from "../../../core/system/ErrorTracker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  errorId: string | null;
 }
 
 interface ErrorBoundaryProps {
@@ -25,8 +27,9 @@ interface ErrorBoundaryProps {
 
 const DefaultFallback: React.FC<{
   error: Error | null;
+  errorId?: string | null;
   onReset: () => void;
-}> = ({ error, onReset }) => (
+}> = ({ error, errorId, onReset }) => (
   <div className="min-h-screen bg-ink-950 flex items-center justify-center p-4">
     <div className="max-w-md w-full bg-ink-900 border border-red-800/50 rounded-2xl p-8 text-center">
       <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -36,9 +39,14 @@ const DefaultFallback: React.FC<{
         </svg>
       </div>
       <h2 className="text-lg font-semibold text-ink-100 mb-2">Something went wrong</h2>
-      <p className="text-sm text-ink-400 mb-6">
-        {error?.message ?? "An unexpected error occurred. Please try again."}
+      <p className="text-sm text-ink-400 mb-4">
+        An unexpected error occurred. Your conversations and data are safe.
       </p>
+      {errorId && (
+        <div className="mb-4 px-3 py-1.5 bg-ink-950 border border-ink-800 rounded-lg">
+          <p className="text-[10px] text-ink-500 font-mono">Error ID: {errorId}</p>
+        </div>
+      )}
       <div className="flex gap-3 justify-center">
         <button
           onClick={onReset}
@@ -75,7 +83,7 @@ export class ErrorBoundary extends React.Component<
 > {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, errorId: null };
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
@@ -83,20 +91,24 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    this.setState({ errorInfo: info });
+    const tracked = ErrorTracker.track(error, {
+      operation: "ReactRenderError",
+      extra: { componentStack: info.componentStack?.slice(0, 500) },
+    });
+    this.setState({ errorInfo: info, errorId: tracked.id });
     this.props.onError?.(error, info);
     console.error("[ErrorBoundary]", error, info);
   }
 
   handleReset = (): void => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null, errorInfo: null, errorId: null });
   };
 
   render(): React.ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <DefaultFallback error={this.state.error} onReset={this.handleReset} />
+        <DefaultFallback error={this.state.error} errorId={this.state.errorId} onReset={this.handleReset} />
       );
     }
     return this.props.children;

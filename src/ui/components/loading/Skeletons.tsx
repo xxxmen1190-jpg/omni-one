@@ -88,4 +88,71 @@ export const Spinner: React.FC<{ size?: "sm" | "md" | "lg"; className?: string }
   );
 };
 
+// ─── Empty States ─────────────────────────────────────────────────────────────
+
+export const EmptyConversations: React.FC<{ onNew?: () => void }> = ({ onNew }) => (
+  <div className="flex flex-col items-center justify-center py-12 px-4 text-center" role="status" aria-label="No conversations">
+    <div className="w-12 h-12 rounded-2xl bg-ink-800 flex items-center justify-center mb-4">
+      <svg className="w-6 h-6 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+    </div>
+    <p className="text-sm font-medium text-ink-300 mb-1">No conversations yet</p>
+    <p className="text-xs text-ink-500 mb-4">Start a new conversation to get going.</p>
+    {onNew && (
+      <button
+        onClick={onNew}
+        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors"
+      >
+        New Conversation
+      </button>
+    )}
+  </div>
+);
+
+export const EmptyChat: React.FC<{ userName?: string }> = ({ userName }) => (
+  <div className="flex flex-col items-center justify-center h-full py-16 px-6 text-center" role="status" aria-label="Start chatting">
+    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/20 flex items-center justify-center mb-6">
+      <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      </svg>
+    </div>
+    <h3 className="text-lg font-semibold text-ink-100 mb-2">
+      {userName ? `Welcome, ${userName}` : "Welcome to Omni One"}
+    </h3>
+    <p className="text-sm text-ink-400 max-w-sm leading-relaxed">
+      Ask anything — research, code, analysis, writing, or use AI tools to get things done.
+    </p>
+    <div className="mt-6 grid grid-cols-2 gap-2 w-full max-w-xs">
+      {["Summarize a document", "Write some code", "Research a topic", "Analyze data"].map((prompt) => (
+        <div key={prompt} className="px-3 py-2 bg-ink-800/60 border border-ink-700 rounded-xl text-xs text-ink-400 text-center cursor-default select-none">
+          {prompt}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export const EmptyFiles: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-12 px-4 text-center" role="status" aria-label="No files">
+    <div className="w-12 h-12 rounded-2xl bg-ink-800 flex items-center justify-center mb-4">
+      <svg className="w-6 h-6 text-ink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+      </svg>
+    </div>
+    <p className="text-sm font-medium text-ink-300 mb-1">No files uploaded</p>
+    <p className="text-xs text-ink-500">Attach files to your conversations for analysis.</p>
+  </div>
+);
+
+export const FullPageLoader: React.FC<{ message?: string }> = ({ message = "Loading..." }) => (
+  <div className="min-h-screen bg-ink-950 flex flex-col items-center justify-center gap-4" role="status" aria-label={message}>
+    <Spinner size="lg" />
+    <p className="text-sm text-ink-400">{message}</p>
+  </div>
+);
+
 export default Skeleton;

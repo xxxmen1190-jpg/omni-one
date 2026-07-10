@@ -29,6 +29,8 @@ import { authRoutes } from "../api/routes/auth.js";
 import { userRoutes } from "../api/routes/users.js";
 import { conversationRoutes } from "../api/routes/conversations.js";
 import { filesRoutes } from "../api/routes/files.js";
+import { metricsRoutes } from "../api/routes/metrics.js";
+import { metricsService } from "../services/metricsService.js";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -143,6 +145,16 @@ export async function buildApp() {
   registerRequestIdHook(fastify);
   registerRequestLoggerHooks(fastify);
 
+  // ── Metrics: Track active requests ─────────────────────────────────────────
+  fastify.addHook("onRequest", async () => {
+    metricsService.incrementActiveRequests();
+    metricsService.incrementTotalRequests();
+  });
+  fastify.addHook("onResponse", async (_request, reply) => {
+    metricsService.decrementActiveRequests();
+    if (reply.statusCode >= 500) metricsService.incrementErrors();
+  });
+
   // ── Routes ──────────────────────────────────────────────────────────────────
   await fastify.register(healthRoutes, { prefix: "/" });
   await fastify.register(versionRoutes, { prefix: "/" });
@@ -154,6 +166,7 @@ export async function buildApp() {
   await fastify.register(userRoutes, { prefix: "/" });
   await fastify.register(conversationRoutes, { prefix: "/" });
   await fastify.register(filesRoutes, { prefix: "/" });
+  await fastify.register(metricsRoutes, { prefix: "/" });
 
   // ── Error Handler ───────────────────────────────────────────────────────────
   fastify.setErrorHandler(errorHandler);

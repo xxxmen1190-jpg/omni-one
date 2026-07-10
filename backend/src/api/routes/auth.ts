@@ -7,6 +7,7 @@ import { authService } from "../../services/authService.js";
 import { auditService } from "../../services/auditService.js";
 import { authenticate } from "../../middleware/auth.js";
 import { successResponse } from "../../utils/response.js";
+import { sanitizeEmail, sanitizeString } from "../../middleware/security.js";
 
 
 export async function authRoutes(fastify: FastifyInstance): Promise<void> {
@@ -30,7 +31,10 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const requestId = (request.headers["x-request-id"] as string) ?? "unknown";
       const body = request.body as any;
-      const user = await authService.register(body);
+      // Sanitize inputs before processing
+      const email = sanitizeEmail(body.email);
+      const displayName = body.displayName ? sanitizeString(body.displayName, 100) : undefined;
+      const user = await authService.register({ ...body, email, displayName });
       
       const { token } = await authService.createSession(user.id, {
         ip: request.ip,
@@ -76,7 +80,9 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const requestId = (request.headers["x-request-id"] as string) ?? "unknown";
       const body = request.body as any;
-      const user = await authService.login(body.email, body.password);
+      // Sanitize email before lookup to prevent injection
+      const email = sanitizeEmail(body.email);
+      const user = await authService.login(email, body.password);
       
       const { token } = await authService.createSession(user.id, {
         ip: request.ip,
