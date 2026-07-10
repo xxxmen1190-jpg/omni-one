@@ -1,0 +1,168 @@
+/**
+ * Fastify Application Builder — Omni One Backend
+ *
+ * Assembles the Fastify server with all plugins, middleware, and routes.
+ * This function is pure — it does not start the server (that is done in index.ts).
+ */
+
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
+
+import { config } from "../config/index.js";
+import { logger } from "../utils/logger.js";
+import { errorHandler } from "../middleware/errorHandler.js";
+import { registerRequestIdHook } from "../middleware/requestId.js";
+import { registerRequestLoggerHooks } from "../middleware/requestLogger.js";
+
+import { healthRoutes } from "../api/routes/health.js";
+import { versionRoutes } from "../api/routes/version.js";
+import { statusRoutes } from "../api/routes/status.js";
+import { chatRoutes } from "../api/routes/chat.js";
+import { toolsRoutes } from "../api/routes/tools.js";
+import { agentsRoutes } from "../api/routes/agents.js";
+
+export async function buildApp() {
+  const fastify = Fastify({
+    logger: false, // We use our own pino logger
+    trustProxy: true,
+    requestIdHeader: "x-request-id",
+    genReqId: () => crypto.randomUUID(),
+    bodyLimit: 10 * 1024 * 1024, // 10 MB request body limit
+  });
+
+  // ── Security: Helmet ────────────────────────────────────────────────────────
+  await fastify.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Required for Swagger UI
+  });
+
+  // ── Security: CORS ──────────────────────────────────────────────────────────
+  await fastify.register(cors, {
+    origin: config.cors.origins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-request-id", "x-api-key"],
+    exposedHeaders: ["x-request-id"],
+    credentials: true,
+    maxAge: 86400, // 24 hours preflight cache
+  });
+
+  // ── Security: Rate Limiting ─────────────────────────────────────────────────
+  await fastify.register(rateLimit, {
+    global: true,
+    max: config.rateLimit.max,
+    timeWindow: config.rateLimit.windowMs,
+    keyGenerator: (request) =>
+      (request.headers["x-forwarded-for"] as string | undefined) ??
+      request.ip ??
+      "unknown",
+    errorResponseBuilder: (_request, context) => ({
+      success: false,
+      requestId: "rate-limited",
+      timestamp: new Date().toISOString(),
+      error: {
+        code: "RATE_LIMITED",
+        message: `Too many requests. Retry after ${Math.ceil(context.ttl / 1000)}s.`,
+        statusCode: 429,
+      },
+    }),
+  });
+
+  // ── OpenAPI / Swagger ───────────────────────────────────────────────────────
+  await fastify.register(swagger, {
+    openapi: {
+      openapi: "3.0.3",
+      info: {
+        title: "Omni One API",
+        description:
+          "Production REST API for Omni One — AI orchestration platform. " +
+          "Provides endpoints for chat, tool execution, agent orchestration, and system health.",
+        version: config.appVersion,
+        contact: {
+          name: "Omni One Team",
+        },
+      },
+      servers: [
+        {
+          url: `http://${config.host}:${config.port}`,
+          description:
+            config.nodeEnv === "production" ? "Production" : "Development",
+        },
+      ],
+      tags: [
+        { name: "System", description: "Health, version, and status endpoints" },
+        { name: "Chat", description: "AI chat completion endpoints" },
+        { name: "Tools", description: "Tool execution endpoints" },
+        { name: "Agents", description: "Agent orchestration endpoints" },
+      ],
+      components: {
+        securitySchemes: {
+          ApiKeyAuth: {
+            type: "apiKey",
+            in: "header",
+            name: "x-api-key",
+          },
+        },
+      },
+    },
+  });
+
+  await fastify.register(swaggerUi, {
+    routePrefix: "/docs",
+    uiConfig: {
+      docExpansion: "list",
+      deepLinking: true,
+      displayRequestDuration: true,
+    },
+    staticCSP: false,
+    transformStaticCSP: (header) => header,
+  });
+
+  // ── Middleware Hooks ────────────────────────────────────────────────────────
+  registerRequestIdHook(fastify);
+  registerRequestLoggerHooks(fastify);
+
+  // ── Routes ──────────────────────────────────────────────────────────────────
+  await fastify.register(healthRoutes, { prefix: "/" });
+  await fastify.register(versionRoutes, { prefix: "/" });
+  await fastify.register(statusRoutes, { prefix: "/" });
+  await fastify.register(chatRoutes, { prefix: "/" });
+  await fastify.register(toolsRoutes, { prefix: "/" });
+  await fastify.register(agentsRoutes, { prefix: "/" });
+
+  // ── Error Handler ───────────────────────────────────────────────────────────
+  fastify.setErrorHandler(errorHandler);
+
+  // ── 404 Handler ─────────────────────────────────────────────────────────────
+  fastify.setNotFoundHandler((request, reply) => {
+    const requestId =
+      (request.headers["x-request-id"] as string | undefined) ?? "unknown";
+    void reply.status(404).send({
+      success: false,
+      requestId,
+      timestamp: new Date().toISOString(),
+      error: {
+        code: "NOT_FOUND",
+        message: `Route ${request.method} ${request.url} not found`,
+        statusCode: 404,
+      },
+    });
+  });
+
+  logger.info(
+    { env: config.nodeEnv, version: config.appVersion },
+    "Fastify application built"
+  );
+
+  return fastify;
+}
