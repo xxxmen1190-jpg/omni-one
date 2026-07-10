@@ -1,105 +1,99 @@
 /**
- * App — Root Component
- * Integrates Conversation Library (useConversationStore) with Chat and Sidebar.
- * Active conversation messages are synced to/from the conversation store.
+ * App — Root Component — Omni One Frontend
+ *
+ * Phase 16.4: Full production integration.
+ * - ProtectedRoute gates the app behind real auth
+ * - Loads conversations from backend on mount
+ * - OfflineBanner for network status
+ * - ErrorBoundary for graceful error handling
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import Sidebar from "../ui/components/Sidebar";
 import Chat from "../ui/components/Chat";
 import { useChatStore } from "../store/useChatStore";
 import useConversationStore from "../store/useConversationStore";
+import useAuthStore from "../store/useAuthStore";
+import ProtectedRoute from "../ui/components/auth/ProtectedRoute";
+import { ErrorBoundary } from "../ui/components/error/ErrorBoundary";
+import OfflineBanner from "../ui/components/error/OfflineBanner";
 
-const App: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+// ─── Inner App (rendered after auth) ─────────────────────────────────────────
 
-  // Chat store — in-memory messages for the current session
-  const { messages, clearMessages } = useChatStore();
+const AppInner: React.FC = () => {
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
-  // Conversation library store
+  const { clearMessages } = useChatStore();
   const {
     activeConversationId,
+    conversations,
+    loadConversations,
     createConversation,
     setActiveConversation,
-    getActiveConversation,
-    updateLastMessageInConversation,
-    addMessageToConversation,
-    clearConversationMessages,
+    isLoading: convLoading,
   } = useConversationStore();
 
-  // ── When a conversation is selected in the sidebar, load its messages ──────
-  useEffect(() => {
-    const activeConv = getActiveConversation();
-    if (activeConv) {
-      // Replace in-memory messages with the stored conversation messages
-      clearMessages();
-      // We need to populate the chat store with the stored messages.
-      // We do this by directly setting messages via the store's internal setter.
-      // Since useChatStore doesn't expose a setMessages action, we use a workaround:
-      // We'll add each message individually using addMessage.
-      // But first, clear so we don't duplicate.
-      const { addMessage } = useChatStore.getState();
-      for (const msg of activeConv.messages) {
-        addMessage({ role: msg.role, content: msg.content });
-      }
-    }
-  }, [activeConversationId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { status: authStatus } = useAuthStore();
 
-  // ── Sync new messages to the active conversation ───────────────────────────
+  // ── Load conversations on mount (authenticated users only) ─────────────────
   useEffect(() => {
-    if (!activeConversationId || messages.length === 0) return;
-    const activeConv = getActiveConversation();
-    if (!activeConv) return;
-
-    // Only sync if the message counts differ (new messages added)
-    if (messages.length > activeConv.messages.length) {
-      const newMessages = messages.slice(activeConv.messages.length);
-      for (const msg of newMessages) {
-        addMessageToConversation(activeConversationId, {
-          role: msg.role,
-          content: msg.content,
-        });
-      }
-    } else if (messages.length === activeConv.messages.length && messages.length > 0) {
-      // Last message may have been updated (streaming)
-      const lastMsg = messages[messages.length - 1];
-      const lastStored = activeConv.messages[activeConv.messages.length - 1];
-      if (lastMsg.content !== lastStored.content) {
-        updateLastMessageInConversation(activeConversationId, lastMsg.content);
-      }
+    if (authStatus === "authenticated") {
+      void loadConversations();
     }
-  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authStatus, loadConversations]);
+
+  // ── On first load: if no active conversation, start fresh ─────────────────
+  useEffect(() => {
+    if (authStatus === "authenticated" && !convLoading && conversations.length === 0 && !activeConversationId) {
+      // Don't auto-create — let user start a conversation
+    }
+  }, [authStatus, convLoading, conversations.length, activeConversationId]);
 
   // ── New Chat ───────────────────────────────────────────────────────────────
-  const handleNewChat = useCallback(() => {
-    // Create a new conversation in the library
-    const newId = createConversation("New Conversation");
-    setActiveConversation(newId);
+  const handleNewChat = useCallback(async () => {
     clearMessages();
-  }, [createConversation, setActiveConversation, clearMessages]);
-
-  // ── On first load: if no active conversation, create one ──────────────────
-  useEffect(() => {
-    if (!activeConversationId) {
-      const newId = createConversation("New Conversation");
-      setActiveConversation(newId);
+    if (authStatus === "authenticated") {
+      try {
+        const conv = await createConversation("New Conversation");
+        await setActiveConversation(conv.id);
+      } catch {
+        // Guest mode or error — just clear messages
+        await setActiveConversation(null);
+      }
+    } else {
+      // Guest mode
+      await setActiveConversation(null);
+      clearMessages();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authStatus, clearMessages, createConversation, setActiveConversation]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-ink-950 text-ink-100">
+      <OfflineBanner />
       <Sidebar
         open={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-        onNewChat={handleNewChat}
+        onToggle={() => setSidebarOpen((v) => !v)}
+        onNewChat={() => void handleNewChat()}
       />
       <main className="flex-1 flex flex-col min-w-0 relative">
         <Chat
           sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
         />
       </main>
     </div>
   );
 };
+
+// ─── Root App ─────────────────────────────────────────────────────────────────
+
+const App: React.FC = () => (
+  <ErrorBoundary>
+    <ProtectedRoute>
+      <ErrorBoundary>
+        <AppInner />
+      </ErrorBoundary>
+    </ProtectedRoute>
+  </ErrorBoundary>
+);
 
 export default App;

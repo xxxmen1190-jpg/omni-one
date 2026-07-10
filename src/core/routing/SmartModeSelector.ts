@@ -163,7 +163,7 @@ export class SmartModeSelector {
       pro: "Full reasoning & transparency",
       research: "Web + Deep Research",
       agent: "Complex multi-step tasks",
-      debug: "Developer debug mode"
+      debug: "Developer debug mode", default: "default", focus: "focus", split: "split"
     };
 
     return descriptions[mode] || "Unknown mode";

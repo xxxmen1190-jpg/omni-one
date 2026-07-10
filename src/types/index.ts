@@ -1,5 +1,7 @@
 import { UniversalToolExecutor } from "../core/tools/executor/UniversalToolExecutor";
 
+export type DisplayMode = "simple" | "pro" | "research" | "agent" | "debug" | "default" | "focus" | "split";
+
 export type Message = {
   id: string;
   role: "user" | "assistant" | "system";

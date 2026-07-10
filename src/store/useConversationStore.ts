@@ -1,510 +1,301 @@
 /**
- * Conversation Library Store
- * Full conversation management with localStorage persistence via zustand/middleware persist.
- * Supports: Folders, Tags, Favorites, Pin, Archive, Recycle Bin, Import/Export, Search, Filter.
+ * Conversation Store — Omni One Frontend
+ *
+ * Server-backed conversation management.
+ * All data lives in the backend; this store is a synchronized cache.
+ * sessionStorage is used only for the active conversation ID (UX continuity).
  */
+
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import {
-  Conversation,
-  ConversationFolder,
-  ConversationTag,
-  ConversationLibraryState,
-  ConversationFilter,
-} from "../types/conversation";
-import { Message } from "../types";
+  conversationsApi,
+  type Conversation,
+  type Message,
+  type CreateConversationRequest,
+  type UpdateConversationRequest,
+  ApiError,
+} from "../lib/api";
 
-// ─── Default tag colors ───────────────────────────────────────────────────────
-const TAG_COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#f97316", "#84cc16", "#ec4899", "#6366f1",
-];
-
-// ─── Default folder colors ────────────────────────────────────────────────────
-const FOLDER_COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
-  "#06b6d4", "#f97316", "#84cc16",
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+// ── Legacy types for Sidebar compatibility ─────────────────────────────────
+export interface ConversationFolder {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
-function generateTitle(messages: Message[]): string {
-  const firstUserMsg = messages.find((m) => m.role === "user");
-  if (!firstUserMsg) return "New Conversation";
-  const text = firstUserMsg.content.replace(/📎 \*[^*]+\*/g, "").trim();
-  return text.length > 60 ? text.slice(0, 57) + "..." : text || "New Conversation";
+export interface ConversationTag {
+  id: string;
+  name: string;
+  color: string;
 }
 
-function downloadFile(content: string, filename: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+export type ConversationFilter =
+  | "all"
+  | "pinned"
+  | "favorites"
+  | "archived"
+  | "deleted"
+  | "today"
+  | "week";
+
+export interface ConversationState {
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  messages: Message[];
+  isLoading: boolean;
+  isLoadingMessages: boolean;
+  isSyncing: boolean;
+  error: string | null;
+  searchQuery: string;
+  activeFilter: ConversationFilter;
+
+  loadConversations: () => Promise<void>;
+  createConversation: (title?: string, opts?: CreateConversationRequest) => Promise<Conversation>;
+  setActiveConversation: (id: string | null) => Promise<void>;
+  updateConversation: (id: string, data: UpdateConversationRequest) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  renameConversation: (id: string, title: string) => Promise<void>;
+  pinConversation: (id: string, pinned: boolean) => Promise<void>;
+  favoriteConversation: (id: string, fav: boolean) => Promise<void>;
+  archiveConversation: (id: string, archived: boolean) => Promise<void>;
+  softDeleteConversation: (id: string) => Promise<void>;
+  restoreConversation: (id: string) => Promise<void>;
+
+  loadMessages: (conversationId: string) => Promise<void>;
+  addMessage: (conversationId: string, role: string, content: string, model?: string) => Promise<Message>;
+  updateMessage: (conversationId: string, messageId: string, content: string) => Promise<void>;
+  deleteMessage: (conversationId: string, messageId: string) => Promise<void>;
+
+  setSearchQuery: (q: string) => void;
+  setActiveFilter: (f: ConversationFilter) => void;
+  clearError: () => void;
+  getActiveConversation: () => Conversation | null;
+  getFilteredConversations: () => Conversation[];
+  // ── Legacy Compatibility Stubs (Sidebar) ────────────────────────────────────
+  folders: ConversationFolder[];
+  tags: ConversationTag[];
+  activeFolderId: string | null;
+  activeTagId: string | null;
+  setActiveFolderId: (id: string | null) => void;
+  setActiveTagId: (id: string | null) => void;
+  createFolder: (name: string) => void;
+  deleteFolder: (id: string) => void;
+  createTag: (name: string) => void;
+  deleteTag: (id: string) => void;
+  moveToFolder: (convId: string, folderId: string | null) => void;
+  addTagToConversation: (convId: string, tagId: string) => void;
+  removeTagFromConversation: (convId: string, tagId: string) => void;
+  exportConversation: (convId: string, format: string) => void;
+  exportAll: (format: string) => void;
+  importConversations: (data: unknown) => { imported: number; skipped: number; errors?: string[] };
+  emptyRecycleBin: () => Promise<void>;
+  permanentlyDeleteConversation: (id: string) => Promise<void>;
+  updateConversationTitle: (id: string, title: string) => void;
 }
 
-function conversationToMarkdown(conv: Conversation): string {
-  const lines: string[] = [
-    `# ${conv.title}`,
-    ``,
-    `**Created:** ${new Date(conv.createdAt).toLocaleString()}`,
-    `**Updated:** ${new Date(conv.updatedAt).toLocaleString()}`,
-    `**Messages:** ${conv.messageCount}`,
-    ``,
-    `---`,
-    ``,
-  ];
-  for (const msg of conv.messages) {
-    const role = msg.role === "user" ? "**You**" : "**Omni One**";
-    const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    lines.push(`### ${role} — ${time}`);
-    lines.push(``);
-    lines.push(msg.content);
-    lines.push(``);
-    lines.push(`---`);
-    lines.push(``);
-  }
-  return lines.join("\n");
-}
+const ACTIVE_CONV_KEY = "omni_active_conv";
+const saveActiveConvId = (id: string | null) =>
+  id ? sessionStorage.setItem(ACTIVE_CONV_KEY, id) : sessionStorage.removeItem(ACTIVE_CONV_KEY);
+const loadActiveConvId = (): string | null => sessionStorage.getItem(ACTIVE_CONV_KEY);
 
-function conversationToText(conv: Conversation): string {
-  const lines: string[] = [
-    `Conversation: ${conv.title}`,
-    `Created: ${new Date(conv.createdAt).toLocaleString()}`,
-    ``,
-    `${"=".repeat(60)}`,
-    ``,
-  ];
-  for (const msg of conv.messages) {
-    const role = msg.role === "user" ? "You" : "Omni One";
-    const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    lines.push(`[${time}] ${role}:`);
-    lines.push(msg.content);
-    lines.push(``);
-  }
-  return lines.join("\n");
-}
+export const useConversationStore = create<ConversationState>((set, get) => ({
+  conversations: [],
+  activeConversationId: loadActiveConvId(),
+  messages: [],
+  isLoading: false,
+  isLoadingMessages: false,
+  isSyncing: false,
+  error: null,
+  searchQuery: "",
+  activeFilter: "all",
 
-// ─── Store ────────────────────────────────────────────────────────────────────
-export const useConversationStore = create<ConversationLibraryState>()(
-  persist(
-    (set, get) => ({
-      conversations: [],
-      folders: [],
-      tags: [],
-      activeConversationId: null,
-      searchQuery: "",
-      activeFilter: "all" as ConversationFilter,
-      activeFolderId: null,
-      activeTagId: null,
-
-      // ─── Conversation CRUD ─────────────────────────────────────────────────
-      createConversation: (title?: string, folderId?: string | null) => {
-        const id = generateId();
-        const now = Date.now();
-        const conv: Conversation = {
-          id,
-          title: title ?? "New Conversation",
-          messages: [],
-          createdAt: now,
-          updatedAt: now,
-          folderId: folderId ?? null,
-          tags: [],
-          isPinned: false,
-          isFavorite: false,
-          isArchived: false,
-          isDeleted: false,
-          messageCount: 0,
-        };
-        set((state) => ({
-          conversations: [conv, ...state.conversations],
-          activeConversationId: id,
-        }));
-        return id;
-      },
-
-      deleteConversation: (id) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, isDeleted: true, deletedAt: Date.now() } : c
-          ),
-          activeConversationId:
-            state.activeConversationId === id ? null : state.activeConversationId,
-        }));
-      },
-
-      restoreConversation: (id) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, isDeleted: false, deletedAt: undefined } : c
-          ),
-        }));
-      },
-
-      permanentlyDeleteConversation: (id) => {
-        set((state) => ({
-          conversations: state.conversations.filter((c) => c.id !== id),
-          activeConversationId:
-            state.activeConversationId === id ? null : state.activeConversationId,
-        }));
-      },
-
-      emptyRecycleBin: () => {
-        set((state) => ({
-          conversations: state.conversations.filter((c) => !c.isDeleted),
-        }));
-      },
-
-      updateConversationTitle: (id, title) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, title, updatedAt: Date.now() } : c
-          ),
-        }));
-      },
-
-      setActiveConversation: (id) => {
-        set({ activeConversationId: id });
-      },
-
-      // ─── Message management ────────────────────────────────────────────────
-      addMessageToConversation: (conversationId, message) => {
-        const msgId = generateId();
-        const newMessage: Message = {
-          ...message,
-          id: msgId,
-          timestamp: Date.now(),
-        };
-        set((state) => ({
-          conversations: state.conversations.map((c) => {
-            if (c.id !== conversationId) return c;
-            const updatedMessages = [...c.messages, newMessage];
-            const updatedTitle =
-              c.messages.length === 0 && message.role === "user"
-                ? generateTitle([newMessage])
-                : c.title;
-            return {
-              ...c,
-              messages: updatedMessages,
-              messageCount: updatedMessages.length,
-              title: updatedTitle,
-              updatedAt: Date.now(),
-            };
-          }),
-        }));
-        return msgId;
-      },
-
-      updateLastMessageInConversation: (conversationId, content, metadata) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) => {
-            if (c.id !== conversationId) return c;
-            const msgs = [...c.messages];
-            if (msgs.length === 0) return c;
-            const lastIdx = msgs.length - 1;
-            msgs[lastIdx] = {
-              ...msgs[lastIdx],
-              content,
-              ...(metadata ?? {}),
-            };
-            return { ...c, messages: msgs, updatedAt: Date.now() };
-          }),
-        }));
-      },
-
-      clearConversationMessages: (conversationId) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId
-              ? { ...c, messages: [], messageCount: 0, updatedAt: Date.now() }
-              : c
-          ),
-        }));
-      },
-
-      // ─── Organization ──────────────────────────────────────────────────────
-      pinConversation: (id, pinned) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, isPinned: pinned, updatedAt: Date.now() } : c
-          ),
-        }));
-      },
-
-      favoriteConversation: (id, favorited) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, isFavorite: favorited, updatedAt: Date.now() } : c
-          ),
-        }));
-      },
-
-      archiveConversation: (id, archived) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, isArchived: archived, updatedAt: Date.now() } : c
-          ),
-          activeConversationId:
-            archived && state.activeConversationId === id
-              ? null
-              : state.activeConversationId,
-        }));
-      },
-
-      moveToFolder: (conversationId, folderId) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId
-              ? { ...c, folderId, updatedAt: Date.now() }
-              : c
-          ),
-        }));
-      },
-
-      addTagToConversation: (conversationId, tagId) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId && !c.tags.includes(tagId)
-              ? { ...c, tags: [...c.tags, tagId], updatedAt: Date.now() }
-              : c
-          ),
-        }));
-      },
-
-      removeTagFromConversation: (conversationId, tagId) => {
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId
-              ? { ...c, tags: c.tags.filter((t) => t !== tagId), updatedAt: Date.now() }
-              : c
-          ),
-        }));
-      },
-
-      // ─── Folder CRUD ───────────────────────────────────────────────────────
-      createFolder: (name, color?, icon?) => {
-        const id = generateId();
-        const folder: ConversationFolder = {
-          id,
-          name,
-          color: color ?? FOLDER_COLORS[Math.floor(Math.random() * FOLDER_COLORS.length)],
-          icon: icon ?? "📁",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-        set((state) => ({ folders: [...state.folders, folder] }));
-        return id;
-      },
-
-      deleteFolder: (id) => {
-        set((state) => ({
-          folders: state.folders.filter((f) => f.id !== id),
-          conversations: state.conversations.map((c) =>
-            c.folderId === id ? { ...c, folderId: null } : c
-          ),
-        }));
-      },
-
-      updateFolder: (id, updates) => {
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, ...updates, updatedAt: Date.now() } : f
-          ),
-        }));
-      },
-
-      // ─── Tag CRUD ──────────────────────────────────────────────────────────
-      createTag: (name, color?) => {
-        const id = generateId();
-        const tag: ConversationTag = {
-          id,
-          name,
-          color: color ?? TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)],
-        };
-        set((state) => ({ tags: [...state.tags, tag] }));
-        return id;
-      },
-
-      deleteTag: (id) => {
-        set((state) => ({
-          tags: state.tags.filter((t) => t.id !== id),
-          conversations: state.conversations.map((c) => ({
-            ...c,
-            tags: c.tags.filter((t) => t !== id),
-          })),
-        }));
-      },
-
-      updateTag: (id, updates) => {
-        set((state) => ({
-          tags: state.tags.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-        }));
-      },
-
-      // ─── Search & Filter ───────────────────────────────────────────────────
-      setSearchQuery: (query) => set({ searchQuery: query }),
-      setActiveFilter: (filter) => set({ activeFilter: filter }),
-      setActiveFolderId: (folderId) =>
-        set({ activeFolderId: folderId, activeFilter: folderId ? "folder" : "all" }),
-      setActiveTagId: (tagId) =>
-        set({ activeTagId: tagId, activeFilter: tagId ? "tag" : "all" }),
-
-      // ─── Import / Export ───────────────────────────────────────────────────
-      exportConversation: (id, format) => {
-        const conv = get().conversations.find((c) => c.id === id);
-        if (!conv) return;
-        const safeName = conv.title.replace(/[^a-z0-9]/gi, "_").toLowerCase().slice(0, 50);
-        if (format === "json") {
-          downloadFile(JSON.stringify(conv, null, 2), `${safeName}.json`, "application/json");
-        } else if (format === "md") {
-          downloadFile(conversationToMarkdown(conv), `${safeName}.md`, "text/markdown");
-        } else {
-          downloadFile(conversationToText(conv), `${safeName}.txt`, "text/plain");
-        }
-      },
-
-      exportAll: (format) => {
-        const { conversations, folders, tags } = get();
-        const data = { conversations, folders, tags, exportedAt: Date.now(), version: "1.0" };
-        downloadFile(JSON.stringify(data, null, 2), `omni-one-export-${Date.now()}.json`, "application/json");
-      },
-
-      importConversations: (data) => {
-        const errors: string[] = [];
-        let imported = 0;
-        try {
-          const parsed = JSON.parse(data);
-          const convs: Conversation[] = Array.isArray(parsed)
-            ? parsed
-            : parsed.conversations ?? [];
-          const newConvs: Conversation[] = [];
-          for (const c of convs) {
-            if (!c.id || !c.title || !Array.isArray(c.messages)) {
-              errors.push(`Invalid conversation: missing id, title, or messages`);
-              continue;
-            }
-            // Assign new ID to avoid conflicts
-            newConvs.push({
-              ...c,
-              id: generateId(),
-              isDeleted: false,
-              isArchived: false,
-            });
-            imported++;
-          }
-          // Import folders and tags if present
-          const newFolders: ConversationFolder[] = parsed.folders ?? [];
-          const newTags: ConversationTag[] = parsed.tags ?? [];
-          set((state) => ({
-            conversations: [...newConvs, ...state.conversations],
-            folders: [
-              ...newFolders.filter((f) => !state.folders.find((sf) => sf.id === f.id)),
-              ...state.folders,
-            ],
-            tags: [
-              ...newTags.filter((t) => !state.tags.find((st) => st.id === t.id)),
-              ...state.tags,
-            ],
-          }));
-        } catch (e) {
-          errors.push(`Parse error: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        return { imported, errors };
-      },
-
-      // ─── Computed getters ──────────────────────────────────────────────────
-      getFilteredConversations: () => {
-        const { conversations, searchQuery, activeFilter, activeFolderId, activeTagId } = get();
-        let result = conversations;
-
-        // Always exclude deleted unless viewing recycle bin
-        if (activeFilter !== "deleted") {
-          result = result.filter((c) => !c.isDeleted);
-        }
-
-        // Apply filter
-        switch (activeFilter) {
-          case "pinned":
-            result = result.filter((c) => c.isPinned);
-            break;
-          case "favorites":
-            result = result.filter((c) => c.isFavorite);
-            break;
-          case "archived":
-            result = result.filter((c) => c.isArchived);
-            break;
-          case "deleted":
-            result = result.filter((c) => c.isDeleted);
-            break;
-          case "today": {
-            const todayStart = new Date();
-            todayStart.setHours(0, 0, 0, 0);
-            result = result.filter(
-              (c) => !c.isArchived && c.updatedAt >= todayStart.getTime()
-            );
-            break;
-          }
-          case "week": {
-            const weekStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            result = result.filter((c) => !c.isArchived && c.updatedAt >= weekStart);
-            break;
-          }
-          case "folder":
-            result = result.filter(
-              (c) => !c.isArchived && c.folderId === activeFolderId
-            );
-            break;
-          case "tag":
-            result = result.filter(
-              (c) => !c.isArchived && activeTagId && c.tags.includes(activeTagId)
-            );
-            break;
-          default:
-            result = result.filter((c) => !c.isArchived);
-        }
-
-        // Apply search
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          result = result.filter(
-            (c) =>
-              c.title.toLowerCase().includes(q) ||
-              c.messages.some((m) => m.content.toLowerCase().includes(q))
-          );
-        }
-
-        // Sort: pinned first, then by updatedAt desc
-        result = [...result].sort((a, b) => {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return b.updatedAt - a.updatedAt;
-        });
-
-        return result;
-      },
-
-      getActiveConversation: () => {
-        const { conversations, activeConversationId } = get();
-        if (!activeConversationId) return null;
-        return conversations.find((c) => c.id === activeConversationId) ?? null;
-      },
-
-      getConversationById: (id) => {
-        return get().conversations.find((c) => c.id === id);
-      },
-    }),
-    {
-      name: "omni-one-conversation-library",
-      version: 1,
+  loadConversations: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const conversations = await conversationsApi.list();
+      set({ conversations, isLoading: false });
+    } catch (err) {
+      set({ isLoading: false, error: err instanceof ApiError ? err.message : "Failed to load conversations" });
     }
-  )
-);
+  },
+
+  createConversation: async (title = "New Conversation", opts = {}) => {
+    set({ isSyncing: true });
+    try {
+      const conv = await conversationsApi.create({ title, ...opts });
+      set((s) => ({ conversations: [conv, ...s.conversations], isSyncing: false }));
+      return conv;
+    } catch (err) {
+      set({ isSyncing: false, error: err instanceof ApiError ? err.message : "Failed to create conversation" });
+      throw err;
+    }
+  },
+
+  setActiveConversation: async (id: string | null) => {
+    set({ activeConversationId: id, messages: [] });
+    saveActiveConvId(id);
+    if (id) await get().loadMessages(id);
+  },
+
+  updateConversation: async (id: string, data: UpdateConversationRequest) => {
+    set((s) => ({ conversations: s.conversations.map((c) => c.id === id ? { ...c, ...data } : c) }));
+    try {
+      const updated = await conversationsApi.update(id, data);
+      set((s) => ({ conversations: s.conversations.map((c) => c.id === id ? updated : c) }));
+    } catch (err) {
+      await get().loadConversations();
+      throw err;
+    }
+  },
+
+  deleteConversation: async (id: string) => {
+    set((s) => ({ conversations: s.conversations.filter((c) => c.id !== id) }));
+    try {
+      await conversationsApi.delete(id);
+      if (get().activeConversationId === id) {
+        set({ activeConversationId: null, messages: [] });
+        saveActiveConvId(null);
+      }
+    } catch (err) {
+      await get().loadConversations();
+      throw err;
+    }
+  },
+
+  renameConversation: (id, title) => get().updateConversation(id, { title }),
+  pinConversation: (id, isPinned) => get().updateConversation(id, { isPinned }),
+  favoriteConversation: (id, isFavorite) => get().updateConversation(id, { isFavorite }),
+  archiveConversation: (id, isArchived) => get().updateConversation(id, { isArchived }),
+  softDeleteConversation: (id) => get().updateConversation(id, { isDeleted: true }),
+  restoreConversation: (id) => get().updateConversation(id, { isDeleted: false }),
+
+  loadMessages: async (conversationId: string) => {
+    set({ isLoadingMessages: true });
+    try {
+      const messages = await conversationsApi.getMessages(conversationId);
+      set({ messages, isLoadingMessages: false });
+    } catch (err) {
+      set({ isLoadingMessages: false, error: err instanceof ApiError ? err.message : "Failed to load messages" });
+    }
+  },
+
+  addMessage: async (conversationId, role, content, model) => {
+    const message = await conversationsApi.addMessage(conversationId, { role, content, model });
+    set((s) => ({
+      messages: [...s.messages, message],
+      conversations: s.conversations.map((c) =>
+        c.id === conversationId ? { ...c, updatedAt: message.createdAt } : c
+      ),
+    }));
+    return message;
+  },
+
+  updateMessage: async (conversationId, messageId, content) => {
+    set((s) => ({ messages: s.messages.map((m) => m.id === messageId ? { ...m, content } : m) }));
+    try {
+      await conversationsApi.updateMessage(conversationId, messageId, { content });
+    } catch (err) {
+      await get().loadMessages(conversationId);
+      throw err;
+    }
+  },
+
+  deleteMessage: async (conversationId, messageId) => {
+    set((s) => ({ messages: s.messages.filter((m) => m.id !== messageId) }));
+    try {
+      await conversationsApi.deleteMessage(conversationId, messageId);
+    } catch (err) {
+      await get().loadMessages(conversationId);
+      throw err;
+    }
+  },
+
+  setSearchQuery: (q) => set({ searchQuery: q }),
+  setActiveFilter: (f) => set({ activeFilter: f }),
+  clearError: () => set({ error: null }),
+
+  getActiveConversation: () => {
+    const { conversations, activeConversationId } = get();
+    if (!activeConversationId) return null;
+    return conversations.find((c) => c.id === activeConversationId) ?? null;
+  },
+
+  // ── Legacy Compatibility Stubs ───────────────────────────────────────────────
+  folders: [],
+  tags: [],
+  activeFolderId: null,
+  activeTagId: null,
+  setActiveFolderId: (id) => set({ activeFolderId: id }),
+  setActiveTagId: (id) => set({ activeTagId: id }),
+  createFolder: (_name) => { /* Phase 17: server-side folders */ },
+  deleteFolder: (_id) => { /* Phase 17 */ },
+  createTag: (_name) => { /* Phase 17 */ },
+  deleteTag: (_id) => { /* Phase 17 */ },
+  moveToFolder: (_convId, _folderId) => { /* Phase 17 */ },
+  addTagToConversation: (_convId, _tagId) => { /* Phase 17 */ },
+  removeTagFromConversation: (_convId, _tagId) => { /* Phase 17 */ },
+  exportConversation: (convId, _format) => {
+    const conv = get().conversations.find((c) => c.id === convId);
+    if (!conv) return;
+    const blob = new Blob([JSON.stringify(conv, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${conv.title}.json`; a.click();
+    URL.revokeObjectURL(url);
+  },
+  exportAll: (_format) => {
+    const { conversations } = get();
+    const blob = new Blob([JSON.stringify(conversations, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "conversations.json"; a.click();
+    URL.revokeObjectURL(url);
+  },
+  importConversations: (_data) => ({ imported: 0, skipped: 0, errors: [] }),
+  emptyRecycleBin: async () => {
+    const deleted = get().conversations.filter((c) => c.isDeleted);
+    for (const c of deleted) {
+      await get().deleteConversation(c.id);
+    }
+  },
+  permanentlyDeleteConversation: async (id) => {
+    await get().deleteConversation(id);
+  },
+  updateConversationTitle: (id, title) => { void get().renameConversation(id, title); },
+  getFilteredConversations: () => {
+    const { conversations, searchQuery, activeFilter } = get();
+    let result = conversations;
+    if (activeFilter !== "deleted") result = result.filter((c) => !c.isDeleted);
+    switch (activeFilter) {
+      case "pinned": result = result.filter((c) => c.isPinned); break;
+      case "favorites": result = result.filter((c) => c.isFavorite); break;
+      case "archived": result = result.filter((c) => c.isArchived); break;
+      case "deleted": result = result.filter((c) => c.isDeleted); break;
+      case "today": {
+        const t = new Date(); t.setHours(0, 0, 0, 0);
+        result = result.filter((c) => !c.isArchived && new Date(c.updatedAt) >= t);
+        break;
+      }
+      case "week": {
+        const w = new Date(Date.now() - 7 * 86400000);
+        result = result.filter((c) => !c.isArchived && new Date(c.updatedAt) >= w);
+        break;
+      }
+      default: result = result.filter((c) => !c.isArchived);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((c) => c.title.toLowerCase().includes(q));
+    }
+    return [...result].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  },
+}));
 
 export default useConversationStore;

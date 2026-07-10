@@ -4,8 +4,8 @@
  * Folders, Search, Favorites, Pin, Archive, Tags, Recycle Bin, Import/Export, Settings
  */
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import useConversationStore from "../../store/useConversationStore";
-import { Conversation, ConversationFolder, ConversationTag, ConversationFilter } from "../../types/conversation";
+import useConversationStore, { type ConversationFolder, type ConversationTag, type ConversationFilter } from "../../store/useConversationStore";
+import type { Conversation } from "../../lib/api/types";
 
 interface SidebarProps {
   open: boolean;
@@ -190,7 +190,7 @@ const ConversationContextMenu: React.FC<ConvMenuProps> = ({ conv, folders, tags,
                   <p className="px-3 py-2 text-xs text-ink-500">No tags yet</p>
                 )}
                 {tags.map((t) => {
-                  const hasTag = conv.tags.includes(t.id);
+                  const hasTag = (conv.tags ?? []).includes(t.id);
                   return (
                     <button key={t.id}
                       onClick={() => { hasTag ? removeTagFromConversation(conv.id, t.id) : addTagToConversation(conv.id, t.id); }}
@@ -262,7 +262,7 @@ const ConversationItem: React.FC<ConvItemProps> = ({ conv, isActive, folders, ta
   }, [showMenu]);
 
   const folder = conv.folderId ? folders.find((f) => f.id === conv.folderId) : null;
-  const convTags = tags.filter((t) => conv.tags.includes(t.id));
+  const convTags = tags.filter((t) => (conv.tags ?? []).includes(t.id));
 
   return (
     <div
@@ -357,8 +357,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle, onNewChat }) => {
     reader.onload = (ev) => {
       const data = ev.target?.result as string;
       const result = importConversations(data);
-      if (result.errors.length > 0) {
-        setImportError(`Imported ${result.imported}, errors: ${result.errors.join("; ")}`);
+      if ((result.errors ?? []).length > 0) {
+        setImportError(`Imported ${result.imported}, errors: ${(result.errors ?? []).join("; ")}`);
       } else {
         setImportError(null);
       }
@@ -684,7 +684,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onToggle, onNewChat }) => {
                 <p className="py-6 text-center text-xs text-ink-500">No tags yet. Create tags to categorize your conversations.</p>
               ) : (
                 tags.map((t) => {
-                  const count = conversations.filter((c) => c.tags.includes(t.id) && !c.isDeleted).length;
+                  const count = conversations.filter((c) => (c.tags ?? []).includes(t.id) && !c.isDeleted).length;
                   return (
                     <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-ink-800 group cursor-pointer"
                       onClick={() => { setSection("conversations"); setActiveTagId(t.id); }}>

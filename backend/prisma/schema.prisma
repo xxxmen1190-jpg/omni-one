@@ -107,7 +107,11 @@ model Conversation {
   userId      String
   projectId   String?
   summary     String?   @db.Text
-  metadata    Json?     // Provider info, token counts, etc.
+  metadata    Json?          // Provider info, token counts, etc.
+  isPinned    Boolean   @default(false)
+  isFavorite  Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  isDeleted   Boolean   @default(false)
   
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)

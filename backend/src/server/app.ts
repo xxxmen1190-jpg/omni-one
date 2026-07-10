@@ -27,6 +27,8 @@ import { toolsRoutes } from "../api/routes/tools.js";
 import { agentsRoutes } from "../api/routes/agents.js";
 import { authRoutes } from "../api/routes/auth.js";
 import { userRoutes } from "../api/routes/users.js";
+import { conversationRoutes } from "../api/routes/conversations.js";
+import { filesRoutes } from "../api/routes/files.js";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -71,11 +73,11 @@ export async function buildApp() {
     global: true,
     max: config.rateLimit.max,
     timeWindow: config.rateLimit.windowMs,
-    keyGenerator: (request) =>
+    keyGenerator: (request: any) =>
       (request.headers["x-forwarded-for"] as string | undefined) ??
       request.ip ??
       "unknown",
-    errorResponseBuilder: (_request, context) => ({
+    errorResponseBuilder: (_request: any, context: any) => ({
       success: false,
       requestId: "rate-limited",
       timestamp: new Date().toISOString(),
@@ -134,7 +136,7 @@ export async function buildApp() {
       displayRequestDuration: true,
     },
     staticCSP: false,
-    transformStaticCSP: (header) => header,
+    transformStaticCSP: (header: any) => header,
   });
 
   // ── Middleware Hooks ────────────────────────────────────────────────────────
@@ -150,6 +152,8 @@ export async function buildApp() {
   await fastify.register(agentsRoutes, { prefix: "/" });
   await fastify.register(authRoutes, { prefix: "/" });
   await fastify.register(userRoutes, { prefix: "/" });
+  await fastify.register(conversationRoutes, { prefix: "/" });
+  await fastify.register(filesRoutes, { prefix: "/" });
 
   // ── Error Handler ───────────────────────────────────────────────────────────
   fastify.setErrorHandler(errorHandler);

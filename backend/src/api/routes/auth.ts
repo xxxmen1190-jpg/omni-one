@@ -45,7 +45,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         request,
       });
 
-      void reply
+      void (reply as any)
         .setCookie("session", token, {
           path: "/",
           httpOnly: true,
@@ -91,7 +91,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         request,
       });
 
-      void reply
+      void (reply as any)
         .setCookie("session", token, {
           path: "/",
           httpOnly: true,
@@ -123,7 +123,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         request,
       });
 
-      void reply
+      void (reply as any)
         .clearCookie("session")
         .send(successResponse({ message: "Logged out successfully" }, requestId));
     }

@@ -82,16 +82,9 @@ export async function agentsRoutes(fastify: FastifyInstance): Promise<void> {
     "/agents/run",
     {
       schema: {
-        tags: ["Agents"],
-        summary: "Run an agent",
-        description:
-          "Submit a task to the agent orchestration system. " +
-          "The agent will autonomously plan and execute multi-step tasks.",
-        security: [{ ApiKeyAuth: [] }],
         body: agentsBodySchema,
         response: {
           200: {
-            description: "Agent completed successfully",
             type: "object",
             properties: {
               success: { type: "boolean" },

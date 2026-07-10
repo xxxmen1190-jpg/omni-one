@@ -64,16 +64,9 @@ export async function toolsRoutes(fastify: FastifyInstance): Promise<void> {
     "/tools/execute",
     {
       schema: {
-        tags: ["Tools"],
-        summary: "Execute a tool",
-        description:
-          "Execute a registered tool by name with the provided parameters. " +
-          "Tools include web search, image generation, file parsing, and more.",
-        security: [{ ApiKeyAuth: [] }],
         body: toolsBodySchema,
         response: {
           200: {
-            description: "Tool executed successfully",
             type: "object",
             properties: {
               success: { type: "boolean" },

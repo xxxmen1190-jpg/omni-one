@@ -25,6 +25,7 @@
     "marked": "^18.0.5",
     "monaco-editor": "^0.55.1",
     "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^6.1.200",
     "pdfmake": "^0.3.11",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

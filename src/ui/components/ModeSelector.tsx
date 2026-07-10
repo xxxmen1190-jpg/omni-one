@@ -1,6 +1,6 @@
 import React from "react";
 import useChatStore from "../../store/useChatStore";
-import { DisplayMode } from "../../types/ux";
+import type { DisplayMode } from "../../store/useChatStore";
 
 const ModeSelector: React.FC = () => {
   const { displayMode, setDisplayMode } = useChatStore();
