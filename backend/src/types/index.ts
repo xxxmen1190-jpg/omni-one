@@ -31,6 +31,23 @@ export interface AppConfig {
     level: string;
     pretty: boolean;
   };
+  database: {
+    url?: string;
+  };
+  redis: {
+    url?: string;
+  };
+  storage: {
+    provider: "local" | "s3";
+    path: string;
+    s3?: {
+      region?: string;
+      bucket?: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+      endpoint?: string;
+    };
+  };
 }
 
 // ─── API Request / Response ───────────────────────────────────────────────────
@@ -85,6 +102,11 @@ export interface HealthData {
     arch: string;
   };
   aiProviders: AIProviderStatus;
+  persistence: {
+    database: "connected" | "disconnected";
+    redis: "connected" | "disconnected";
+    storage: "local" | "s3";
+  };
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

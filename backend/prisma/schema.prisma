@@ -1,0 +1,249 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─── User & Identity ──────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  avatarUrl     String?
+  role          UserRole       @default(USER)
+  status        UserStatus     @default(ACTIVE)
+  settings      Json?          // User-specific UI/AI settings
+  
+  conversations Conversation[]
+  projects      Project[]
+  apiKeys       ApiKey[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([email])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ─── Chat & Messaging ─────────────────────────────────────────────────────────
+
+model Conversation {
+  id          String    @id @default(uuid())
+  title       String?
+  userId      String
+  projectId   String?
+  summary     String?   @db.Text
+  metadata    Json?     // Provider info, token counts, etc.
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages    Message[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String       @db.Text
+  tokens         Int?
+  model          String?
+  metadata       Json?        // Tool calls, reasoning, etc.
+  
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+// ─── Projects & Workspace ─────────────────────────────────────────────────────
+
+model Project {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?        @db.Text
+  userId        String
+  metadata      Json?
+  
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  files         File[]
+  tasks         Task[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Memory & Knowledge (RAG) ─────────────────────────────────────────────────
+
+model Memory {
+  id          String                      @id @default(uuid())
+  userId      String
+  content     String                      @db.Text
+  metadata    Json?
+  embedding   Unsupported("vector(1536)")? // For OpenAI embeddings
+  
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+
+  @@index([userId])
+}
+
+// ─── File Persistence ─────────────────────────────────────────────────────────
+
+model File {
+  id          String    @id @default(uuid())
+  name        String
+  size        Int
+  mimeType    String
+  key         String    @unique // Storage provider key (S3/Local)
+  provider    String    // "S3" | "LOCAL"
+  projectId   String?
+  metadata    Json?
+  
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+// ─── Agents & Tasks ───────────────────────────────────────────────────────────
+
+model Agent {
+  id          String      @id @default(uuid())
+  name        String
+  type        String      // "research" | "code" | "automation"
+  config      Json?
+  status      AgentStatus @default(IDLE)
+  
+  tasks       Task[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum AgentStatus {
+  IDLE
+  RUNNING
+  MAINTENANCE
+  DEPRECATED
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  projectId   String?
+  agentId     String?
+  title       String
+  description String?    @db.Text
+  status      TaskStatus @default(PENDING)
+  priority    Int        @default(0)
+  result      Json?
+  
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  agent       Agent?     @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([projectId])
+  @@index([agentId])
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ─── Security & Audit ─────────────────────────────────────────────────────────
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  keyPrefix   String    // First 8 chars
+  hash        String    @unique
+  scopes      String[]  // ["chat:read", "tools:execute"]
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  type        String   // "info" | "warning" | "error" | "success"
+  read        Boolean  @default(false)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}

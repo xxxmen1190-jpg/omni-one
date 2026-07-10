@@ -9,6 +9,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../../config/index.js";
 import { successResponse } from "../../utils/response.js";
 import { getProviderStatus } from "../../services/providerStatus.js";
+import { testDbConnection } from "../../database/prisma.js";
+import { testRedisConnection } from "../../database/redis.js";
 import type { HealthData } from "../../types/index.js";
 
 const startTime = Date.now();
@@ -72,16 +74,19 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
         },
       },
     },
-    (_request: FastifyRequest, reply: FastifyReply) => {
+    async (_request: FastifyRequest, reply: FastifyReply) => {
       const requestId =
         (_request.headers["x-request-id"] as string | undefined) ?? "unknown";
       const memUsage = process.memoryUsage();
       const usedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
       const totalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
       const providers = getProviderStatus();
+      
+      const dbConnected = await testDbConnection();
+      const redisConnected = await testRedisConnection();
 
       const health: HealthData = {
-        status: "healthy",
+        status: dbConnected && redisConnected ? "healthy" : "degraded",
         uptime: Math.round((Date.now() - startTime) / 1000),
         timestamp: new Date().toISOString(),
         version: config.appVersion,
@@ -98,6 +103,11 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
           arch: process.arch,
         },
         aiProviders: providers,
+        persistence: {
+          database: dbConnected ? "connected" : "disconnected",
+          redis: redisConnected ? "connected" : "disconnected",
+          storage: config.storage.provider,
+        },
       };
 
       void reply.status(200).send(successResponse(health, requestId));

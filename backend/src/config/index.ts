@@ -56,6 +56,17 @@ const envSchema = z.object({
 
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
   LOG_PRETTY: z.string().transform((v) => v === "true").default("true"),
+
+  DATABASE_URL: z.string().url().optional(),
+  REDIS_URL: z.string().url().optional(),
+
+  STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
+  STORAGE_PATH: z.string().default("./storage"),
+  S3_REGION: z.string().optional(),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_ENDPOINT: z.string().optional(),
 });
 
 // ─── Parse & Validate ─────────────────────────────────────────────────────────
@@ -97,6 +108,23 @@ export const config: AppConfig = {
   logging: {
     level: env.LOG_LEVEL,
     pretty: env.LOG_PRETTY,
+  },
+  database: {
+    url: env.DATABASE_URL,
+  },
+  redis: {
+    url: env.REDIS_URL,
+  },
+  storage: {
+    provider: env.STORAGE_PROVIDER as "local" | "s3",
+    path: env.STORAGE_PATH,
+    s3: {
+      region: env.S3_REGION,
+      bucket: env.S3_BUCKET,
+      accessKeyId: env.S3_ACCESS_KEY_ID,
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+      endpoint: env.S3_ENDPOINT,
+    },
   },
 };
 
