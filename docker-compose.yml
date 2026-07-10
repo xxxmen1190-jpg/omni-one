@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: omni_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - omni_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: omni_frontend
+    restart: unless-stopped
+    networks:
+      - omni_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: omni_backend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - omni_network
+
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: omni_postgres
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - omni_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: omni_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - omni_network
+
+  certbot:
+    image: certbot/certbot
+    container_name: omni_certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - omni_network
+
+networks:
+  omni_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  storage_data:
+  certbot-webroot:
+  certbot-certs:
