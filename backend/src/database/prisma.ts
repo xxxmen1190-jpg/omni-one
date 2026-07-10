@@ -5,10 +5,15 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import pg from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { logger } from "../utils/logger.js";
 import { config } from "../config/index.js";
 
+const pool = new pg.Pool({ connectionString: config.database.url });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({
+  adapter,
   log: config.nodeEnv === "development" ? ["query", "error", "warn"] : ["error"],
 });
 

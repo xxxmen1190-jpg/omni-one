@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -87,6 +88,7 @@ model Session {
   browser       String?
   os            String?
   ip            String?
+  userAgent     String?
   country       String?
   isActive      Boolean   @default(true)
   lastUsedAt    DateTime  @default(now())

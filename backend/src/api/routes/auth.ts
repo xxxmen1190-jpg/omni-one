@@ -34,7 +34,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       
       const { token } = await authService.createSession(user.id, {
         ip: request.ip,
-        userAgent: request.headers["user-agent"],
+         // userAgent: request.headers["user-agent"],
       });
 
       await auditService.log({
@@ -80,7 +80,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       
       const { token } = await authService.createSession(user.id, {
         ip: request.ip,
-        userAgent: request.headers["user-agent"],
+         // userAgent: request.headers["user-agent"],
       });
 
       await auditService.log({

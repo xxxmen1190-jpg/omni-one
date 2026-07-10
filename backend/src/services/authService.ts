@@ -3,14 +3,11 @@
  *
  * Handles registration, login, token generation, and session management.
  */
-
 import crypto from "crypto";
 import { userRepository } from "../database/userRepository.js";
 import { sessionRepository } from "../database/sessionRepository.js";
 import { hashPassword, comparePassword } from "../utils/crypto.js";
 import { AppError } from "../types/index.js";
-
-
 import type { User, Session } from "@prisma/client";
 
 export class AuthService {
@@ -31,17 +28,10 @@ export class AuthService {
   /**
    * Create a new user session.
    */
-  async createSession(userId: string, metadata: {
-    ip?: string;
-    userAgent?: string;
-    deviceName?: string;
-    browser?: string;
-    os?: string;
-    country?: string;
-  }): Promise<{ token: string; session: Session }> {
+  async createSession(userId: string, metadata: any): Promise<{ token: string; session: Session }> {
     const token = this.generateSessionToken();
     const tokenHash = this.hashToken(token);
-    
+
     // Calculate expiration (default 7 days)
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -50,7 +40,11 @@ export class AuthService {
       user: { connect: { id: userId } },
       tokenHash,
       expiresAt,
-      ...metadata,
+      ip: metadata.ip,
+      deviceName: metadata.deviceName,
+      browser: metadata.browser,
+      os: metadata.os,
+      country: metadata.country,
     });
 
     return { token, session };
@@ -83,12 +77,12 @@ export class AuthService {
     }
 
     const passwordHash = data.password ? await hashPassword(data.password) : null;
-    
+
     return userRepository.create({
       email: data.email,
       passwordHash,
       displayName: data.displayName,
-      status: "ACTIVE", // In real prod, this might be PENDING_VERIFICATION
+      status: "ACTIVE",
     });
   }
 
