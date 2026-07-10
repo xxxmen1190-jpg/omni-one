@@ -33,7 +33,7 @@ const ModeSelector: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4 p-2 bg-gray-800/50 rounded-xl border border-gray-700/50">
+    <div className="flex flex-wrap gap-2 mb-4 p-2 bg-ink-800/50 rounded-xl border border-ink-700/50">
       {modes.map((mode) => (
         <button
           key={mode.id}
@@ -41,7 +41,7 @@ const ModeSelector: React.FC = () => {
           className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 group ${
             displayMode === mode.id
               ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-              : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+              : "bg-ink-800 text-ink-400 hover:bg-ink-700 hover:text-ink-200"
           }`}
           title={mode.description}
         >

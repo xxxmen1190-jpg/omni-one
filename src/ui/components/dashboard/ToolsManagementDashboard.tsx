@@ -28,7 +28,7 @@ export const ToolsManagementDashboard: React.FC = () => {
   };
 
   return (
-    <div className="tools-management p-6 bg-gray-50 rounded-lg">
+    <div className="tools-management p-6 bg-ink-50 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Tools Management</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -37,7 +37,7 @@ export const ToolsManagementDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow p-4">
             <h3 className="text-lg font-semibold mb-4">Installed Tools</h3>
             {tools.length === 0 ? (
-              <p className="text-gray-500">No tools installed</p>
+              <p className="text-ink-500">No tools installed</p>
             ) : (
               <div className="space-y-2">
                 {tools.map((tool) => (
@@ -47,12 +47,12 @@ export const ToolsManagementDashboard: React.FC = () => {
                     className={`p-3 rounded cursor-pointer transition ${
                       selectedTool?.id === tool.id
                         ? "bg-blue-100 border-2 border-blue-500"
-                        : "bg-gray-100 hover:bg-gray-200"
+                        : "bg-ink-100 hover:bg-ink-200"
                     }`}
                   >
                     <p className="font-medium">{tool.name}</p>
-                    <p className="text-sm text-gray-600">{tool.description}</p>
-                    <p className="text-xs text-gray-500">v{tool.version}</p>
+                    <p className="text-sm text-ink-600">{tool.description}</p>
+                    <p className="text-xs text-ink-500">v{tool.version}</p>
                   </div>
                 ))}
               </div>
@@ -66,15 +66,15 @@ export const ToolsManagementDashboard: React.FC = () => {
           {selectedTool ? (
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Name</p>
+                <p className="text-sm text-ink-600">Name</p>
                 <p className="font-medium">{selectedTool.name}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">ID</p>
+                <p className="text-sm text-ink-600">ID</p>
                 <p className="font-mono text-sm">{selectedTool.id}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Capabilities</p>
+                <p className="text-sm text-ink-600">Capabilities</p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {selectedTool.capabilities.map((cap) => (
                     <span key={cap} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
@@ -89,7 +89,7 @@ export const ToolsManagementDashboard: React.FC = () => {
                 const stats = Metrics.getToolStats(selectedTool.id);
                 return stats ? (
                   <div>
-                    <p className="text-sm text-gray-600">Metrics</p>
+                    <p className="text-sm text-ink-600">Metrics</p>
                     <div className="mt-2 space-y-1 text-sm">
                       <p>Executions: {stats.executions}</p>
                       <p>Success Rate: {(stats.successRate * 100).toFixed(1)}%</p>
@@ -107,7 +107,7 @@ export const ToolsManagementDashboard: React.FC = () => {
               </button>
             </div>
           ) : (
-            <p className="text-gray-500">Select a tool to view details</p>
+            <p className="text-ink-500">Select a tool to view details</p>
           )}
         </div>
       </div>

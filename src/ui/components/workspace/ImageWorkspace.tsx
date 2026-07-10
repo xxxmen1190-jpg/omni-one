@@ -15,7 +15,7 @@ const ImageWorkspace: React.FC<ImageWorkspaceProps> = ({ content, imageUrls }) =
 
   if (allImages.length === 0) {
     return (
-      <div className="p-4 text-gray-400 text-sm text-center">
+      <div className="p-4 text-ink-400 text-sm text-center">
         <div className="text-4xl mb-2">🖼️</div>
         <p>{content}</p>
       </div>
@@ -33,7 +33,7 @@ const ImageWorkspace: React.FC<ImageWorkspaceProps> = ({ content, imageUrls }) =
         {allImages.map((url, i) => (
           <div
             key={i}
-            className="relative group cursor-pointer rounded-lg overflow-hidden border border-gray-700/50 hover:border-purple-500/50 transition-colors"
+            className="relative group cursor-pointer rounded-lg overflow-hidden border border-ink-700/50 hover:border-purple-500/50 transition-colors"
             onClick={() => setSelectedImage(url)}
           >
             <img
@@ -53,7 +53,7 @@ const ImageWorkspace: React.FC<ImageWorkspaceProps> = ({ content, imageUrls }) =
 
       {/* Non-image content */}
       {content && !content.includes("![") && (
-        <p className="mt-3 text-sm text-gray-400">{content}</p>
+        <p className="mt-3 text-sm text-ink-400">{content}</p>
       )}
 
       {/* Lightbox */}
@@ -68,7 +68,7 @@ const ImageWorkspace: React.FC<ImageWorkspaceProps> = ({ content, imageUrls }) =
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute -top-10 right-0 text-white text-2xl hover:text-gray-300"
+              className="absolute -top-10 right-0 text-white text-2xl hover:text-ink-300"
             >
               ✕
             </button>
@@ -77,14 +77,14 @@ const ImageWorkspace: React.FC<ImageWorkspaceProps> = ({ content, imageUrls }) =
             <div className="absolute -top-10 left-0 flex gap-2">
               <button
                 onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
-                className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+                className="text-white bg-ink-700 hover:bg-ink-600 px-2 py-1 rounded text-sm"
               >
                 −
               </button>
               <span className="text-white text-sm py-1">{Math.round(zoom * 100)}%</span>
               <button
                 onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-                className="text-white bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+                className="text-white bg-ink-700 hover:bg-ink-600 px-2 py-1 rounded text-sm"
               >
                 +
               </button>

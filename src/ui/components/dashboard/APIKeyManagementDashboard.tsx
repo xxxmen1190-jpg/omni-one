@@ -46,7 +46,7 @@ export const APIKeyManagementDashboard: React.FC = () => {
   const providers = ["openai", "anthropic", "gemini", "groq", "openrouter", "github", "search"];
 
   return (
-    <div className="api-key-management p-6 bg-gray-50 rounded-lg">
+    <div className="api-key-management p-6 bg-ink-50 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">API Key Management</h2>
 
       {/* Add Key Form */}
@@ -67,7 +67,7 @@ export const APIKeyManagementDashboard: React.FC = () => {
                 <select
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  className="w-full px-3 py-2 border border-ink-300 rounded"
                 >
                   <option value="">Select Provider</option>
                   {providers.map((p) => (
@@ -84,7 +84,7 @@ export const APIKeyManagementDashboard: React.FC = () => {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="Enter API key"
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  className="w-full px-3 py-2 border border-ink-300 rounded"
                 />
               </div>
               <div className="flex gap-2">
@@ -96,7 +96,7 @@ export const APIKeyManagementDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowForm(false)}
-                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                  className="flex-1 px-4 py-2 bg-ink-500 text-white rounded hover:bg-ink-600"
                 >
                   Cancel
                 </button>
@@ -110,20 +110,20 @@ export const APIKeyManagementDashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow p-4">
         <h3 className="text-lg font-semibold mb-4">Stored Keys</h3>
         {keys.length === 0 ? (
-          <p className="text-gray-500">No API keys stored</p>
+          <p className="text-ink-500">No API keys stored</p>
         ) : (
           <div className="space-y-3">
             {keys.map((key) => (
-              <div key={key.id} className="p-3 border border-gray-200 rounded">
+              <div key={key.id} className="p-3 border border-ink-200 rounded">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="font-medium">{key.provider.toUpperCase()}</p>
-                    <p className="text-sm text-gray-600">Key: {key.keyPrefix}****</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm text-ink-600">Key: {key.keyPrefix}****</p>
+                    <p className="text-xs text-ink-500">
                       Created: {new Date(key.createdAt).toLocaleDateString()}
                     </p>
                     {key.lastUsed && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-ink-500">
                         Last used: {new Date(key.lastUsed).toLocaleString()}
                       </p>
                     )}

@@ -30,7 +30,7 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
 
   if (tables.length === 0) {
     return (
-      <div className="p-4 text-gray-400 text-sm">
+      <div className="p-4 text-ink-400 text-sm">
         <pre className="whitespace-pre-wrap font-mono text-xs">{content}</pre>
       </div>
     );
@@ -46,13 +46,13 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
     <div className="rounded-b-lg overflow-hidden">
       {/* Tab bar */}
       {showChart && hasNumericData && (
-        <div className="flex items-center gap-1 px-3 py-2 bg-gray-900/30 border-b border-gray-700/50">
+        <div className="flex items-center gap-1 px-3 py-2 bg-ink-900/30 border-b border-ink-700/50">
           <button
             onClick={() => setActiveTab("table")}
             className={`px-3 py-1 text-xs rounded transition-colors ${
               activeTab === "table"
                 ? "bg-purple-600 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-700"
+                : "text-ink-400 hover:text-white hover:bg-ink-700"
             }`}
           >
             Table
@@ -62,7 +62,7 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
             className={`px-3 py-1 text-xs rounded transition-colors ${
               activeTab === "chart"
                 ? "bg-purple-600 text-white"
-                : "text-gray-400 hover:text-white hover:bg-gray-700"
+                : "text-ink-400 hover:text-white hover:bg-ink-700"
             }`}
           >
             Chart
@@ -71,13 +71,13 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
             <div className="ml-auto flex gap-1">
               <button
                 onClick={() => setChartType("bar")}
-                className={`px-2 py-1 text-xs rounded ${chartType === "bar" ? "bg-gray-600" : "text-gray-500 hover:bg-gray-700"}`}
+                className={`px-2 py-1 text-xs rounded ${chartType === "bar" ? "bg-ink-600" : "text-ink-500 hover:bg-ink-700"}`}
               >
                 Bar
               </button>
               <button
                 onClick={() => setChartType("line")}
-                className={`px-2 py-1 text-xs rounded ${chartType === "line" ? "bg-gray-600" : "text-gray-500 hover:bg-gray-700"}`}
+                className={`px-2 py-1 text-xs rounded ${chartType === "line" ? "bg-ink-600" : "text-ink-500 hover:bg-ink-700"}`}
               >
                 Line
               </button>
@@ -92,11 +92,11 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
           {tables.map((table, tableIdx) => (
             <table key={tableIdx} className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-gray-800/80">
+                <tr className="bg-ink-800/80">
                   {table.headers.map((header, i) => (
                     <th
                       key={i}
-                      className="px-4 py-2.5 text-left text-xs font-semibold text-gray-300 uppercase tracking-wide border-b border-gray-700"
+                      className="px-4 py-2.5 text-left text-xs font-semibold text-ink-300 uppercase tracking-wide border-b border-ink-700"
                     >
                       {header}
                     </th>
@@ -107,12 +107,12 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
                 {table.rows.map((row, rowIdx) => (
                   <tr
                     key={rowIdx}
-                    className={`border-b border-gray-800 ${
-                      rowIdx % 2 === 0 ? "bg-gray-900/20" : "bg-gray-900/40"
-                    } hover:bg-gray-700/30 transition-colors`}
+                    className={`border-b border-ink-800 ${
+                      rowIdx % 2 === 0 ? "bg-ink-900/20" : "bg-ink-900/40"
+                    } hover:bg-ink-700/30 transition-colors`}
                   >
                     {row.map((cell, cellIdx) => (
-                      <td key={cellIdx} className="px-4 py-2 text-gray-300">
+                      <td key={cellIdx} className="px-4 py-2 text-ink-300">
                         {cell}
                       </td>
                     ))}
@@ -126,7 +126,7 @@ const TableWorkspace: React.FC<TableWorkspaceProps> = ({ content, showChart = fa
 
       {/* Chart view */}
       {activeTab === "chart" && hasNumericData && (
-        <div className="p-4 bg-gray-900/20">
+        <div className="p-4 bg-ink-900/20">
           <ResponsiveContainer width="100%" height={300}>
             {chartType === "bar" ? (
               <BarChart data={chartData}>

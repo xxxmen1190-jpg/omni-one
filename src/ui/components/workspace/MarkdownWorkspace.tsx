@@ -14,7 +14,7 @@ const MarkdownWorkspace: React.FC<MarkdownWorkspaceProps> = ({ content, minimal 
     <div
       className={`markdown-workspace ${
         minimal ? "px-0 py-0" : "px-4 py-3"
-      } text-gray-200 leading-relaxed`}
+      } text-ink-200 leading-relaxed`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -24,7 +24,7 @@ const MarkdownWorkspace: React.FC<MarkdownWorkspaceProps> = ({ content, minimal 
             const isInline = !match;
             return isInline ? (
               <code
-                className="bg-gray-800 text-purple-300 px-1.5 py-0.5 rounded text-sm font-mono"
+                className="bg-ink-800 text-purple-300 px-1.5 py-0.5 rounded text-sm font-mono"
                 {...props}
               >
                 {children}
@@ -48,35 +48,35 @@ const MarkdownWorkspace: React.FC<MarkdownWorkspaceProps> = ({ content, minimal 
             <h2 className="text-xl font-semibold text-white mt-3 mb-2">{children}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-lg font-semibold text-gray-100 mt-2 mb-1">{children}</h3>
+            <h3 className="text-lg font-semibold text-ink-100 mt-2 mb-1">{children}</h3>
           ),
-          p: ({ children }) => <p className="mb-3 text-gray-200">{children}</p>,
+          p: ({ children }) => <p className="mb-3 text-ink-200">{children}</p>,
           ul: ({ children }) => (
-            <ul className="list-disc list-inside mb-3 space-y-1 text-gray-200">{children}</ul>
+            <ul className="list-disc list-inside mb-3 space-y-1 text-ink-200">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-200">{children}</ol>
+            <ol className="list-decimal list-inside mb-3 space-y-1 text-ink-200">{children}</ol>
           ),
-          li: ({ children }) => <li className="text-gray-200">{children}</li>,
+          li: ({ children }) => <li className="text-ink-200">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-purple-500 pl-4 py-1 my-3 text-gray-400 italic">
+            <blockquote className="border-l-4 border-purple-500 pl-4 py-1 my-3 text-ink-400 italic">
               {children}
             </blockquote>
           ),
           table: ({ children }) => (
             <div className="overflow-x-auto my-3">
-              <table className="w-full text-sm border-collapse border border-gray-700">
+              <table className="w-full text-sm border-collapse border border-ink-700">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-gray-700 px-3 py-2 bg-gray-800 text-left font-semibold text-gray-200">
+            <th className="border border-ink-700 px-3 py-2 bg-ink-800 text-left font-semibold text-ink-200">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border border-gray-700 px-3 py-2 text-gray-300">{children}</td>
+            <td className="border border-ink-700 px-3 py-2 text-ink-300">{children}</td>
           ),
           a: ({ href, children }) => (
             <a
@@ -91,8 +91,8 @@ const MarkdownWorkspace: React.FC<MarkdownWorkspaceProps> = ({ content, minimal 
           strong: ({ children }) => (
             <strong className="font-semibold text-white">{children}</strong>
           ),
-          em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
-          hr: () => <hr className="border-gray-700 my-4" />,
+          em: ({ children }) => <em className="italic text-ink-300">{children}</em>,
+          hr: () => <hr className="border-ink-700 my-4" />,
         }}
       >
         {content}

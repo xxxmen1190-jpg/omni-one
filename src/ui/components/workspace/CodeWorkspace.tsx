@@ -37,13 +37,13 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ content, language = "type
   return (
     <div className="space-y-2 p-2">
       {codeBlocks.map((block, idx) => (
-        <div key={idx} className="relative group rounded-lg overflow-hidden border border-gray-700/50">
+        <div key={idx} className="relative group rounded-lg overflow-hidden border border-ink-700/50">
           {/* Language badge */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800 border-b border-gray-700/50">
-            <span className="text-xs text-gray-400 font-mono">{block.language || language}</span>
+          <div className="flex items-center justify-between px-3 py-1.5 bg-ink-800 border-b border-ink-700/50">
+            <span className="text-xs text-ink-400 font-mono">{block.language || language}</span>
             <button
               onClick={() => handleCopy(block.code)}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-ink-500 hover:text-ink-300 transition-colors"
             >
               {copied ? "✓ Copied" : "Copy"}
             </button>
@@ -61,7 +61,7 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ content, language = "type
 
       {/* Non-code text */}
       {codeBlocks.some((b) => b.surrounding) && (
-        <div className="px-2 py-1 text-sm text-gray-300 leading-relaxed">
+        <div className="px-2 py-1 text-sm text-ink-300 leading-relaxed">
           {codeBlocks
             .filter((b) => b.surrounding)
             .map((b, i) => (

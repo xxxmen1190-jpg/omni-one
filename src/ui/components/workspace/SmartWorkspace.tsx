@@ -91,12 +91,12 @@ export const SmartWorkspace: React.FC<SmartWorkspaceProps> = ({
     <div className={`smart-workspace relative ${className}`}>
       {/* Workspace header bar */}
       {detection.type !== "chat" && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-900/50 border-b border-gray-700/50 rounded-t-lg">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-ink-900/50 border-b border-ink-700/50 rounded-t-lg">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <span className="text-xs font-medium text-ink-400 uppercase tracking-wide">
               {label} Workspace
             </span>
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-ink-600">
               {detection.language ? `· ${detection.language}` : ""}
             </span>
           </div>
@@ -106,7 +106,7 @@ export const SmartWorkspace: React.FC<SmartWorkspaceProps> = ({
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={isExporting}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-xs text-ink-400 hover:text-white hover:bg-ink-700 rounded transition-colors"
               title="Export"
             >
               {isExporting ? (
@@ -118,12 +118,12 @@ export const SmartWorkspace: React.FC<SmartWorkspaceProps> = ({
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-xl min-w-[140px]">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-ink-800 border border-ink-700 rounded-lg shadow-xl min-w-[140px]">
                 {EXPORT_FORMATS.map(({ format, label: fLabel, icon }) => (
                   <button
                     key={format}
                     onClick={() => handleExport(format)}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink-300 hover:bg-ink-700 hover:text-white transition-colors first:rounded-t-lg last:rounded-b-lg"
                   >
                     <span>{icon}</span>
                     <span>{fLabel}</span>
@@ -145,7 +145,7 @@ export const SmartWorkspace: React.FC<SmartWorkspaceProps> = ({
       {/* Workspace content */}
       <React.Suspense
         fallback={
-          <div className="p-4 text-gray-500 text-sm animate-pulse">Loading workspace...</div>
+          <div className="p-4 text-ink-500 text-sm animate-pulse">Loading workspace...</div>
         }
       >
         {renderWorkspace(detection.type, content, imageUrls, detection.language)}

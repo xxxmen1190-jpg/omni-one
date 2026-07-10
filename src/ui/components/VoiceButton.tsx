@@ -91,21 +91,28 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
             ? "Processing..."
             : "Start voice input"
         }
+        aria-label={
+          state === "recording"
+            ? "Stop recording"
+            : state === "processing"
+            ? "Processing audio"
+            : "Start voice input"
+        }
         className={`
           relative flex items-center justify-center w-9 h-9 rounded-lg transition-all
           ${state === "recording"
             ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30"
             : state === "processing"
-            ? "bg-gray-600 text-gray-400 cursor-wait"
+            ? "bg-ink-700 text-ink-400 cursor-wait"
             : state === "error"
             ? "bg-red-900/50 text-red-400"
-            : "text-gray-400 hover:text-white hover:bg-gray-700"
+            : "text-ink-400 hover:text-white hover:bg-ink-700"
           }
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         `}
       >
         {state === "processing" ? (
-          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-ink-400 border-t-transparent rounded-full animate-spin" aria-hidden="true" />
         ) : state === "recording" ? (
           <div className="relative">
             {/* Pulsing animation */}

@@ -54,32 +54,32 @@ export const RuntimeMonitoringDashboard: React.FC = () => {
       case "info":
         return "text-blue-600 bg-blue-50";
       case "debug":
-        return "text-gray-600 bg-gray-50";
+        return "text-ink-600 bg-ink-50";
       default:
-        return "text-gray-600 bg-gray-50";
+        return "text-ink-600 bg-ink-50";
     }
   };
 
   return (
-    <div className="runtime-monitoring p-6 bg-gray-50 rounded-lg">
+    <div className="runtime-monitoring p-6 bg-ink-50 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Runtime Monitoring</h2>
 
       {/* System Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Total Tools</p>
+          <p className="text-sm text-ink-600">Total Tools</p>
           <p className="text-3xl font-bold text-blue-600">{systemStats.totalTools}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Total Skills</p>
+          <p className="text-sm text-ink-600">Total Skills</p>
           <p className="text-3xl font-bold text-green-600">{systemStats.totalSkills}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Total Providers</p>
+          <p className="text-sm text-ink-600">Total Providers</p>
           <p className="text-3xl font-bold text-purple-600">{systemStats.totalProviders}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Uptime</p>
+          <p className="text-sm text-ink-600">Uptime</p>
           <p className="text-lg font-bold text-orange-600">{formatUptime(systemStats.uptime)}</p>
         </div>
       </div>
@@ -89,7 +89,7 @@ export const RuntimeMonitoringDashboard: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4">Real-time Logs</h3>
         <div className="space-y-2 max-h-96 overflow-y-auto font-mono text-sm">
           {logs.length === 0 ? (
-            <p className="text-gray-500">No logs available</p>
+            <p className="text-ink-500">No logs available</p>
           ) : (
             logs.map((log, idx) => (
               <div key={idx} className={`p-2 rounded ${getLogColor(log.level)}`}>

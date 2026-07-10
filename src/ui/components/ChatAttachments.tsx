@@ -110,7 +110,7 @@ const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment, onRem
   const isError = attachment.status === "error";
 
   return (
-    <div className="relative group flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 max-w-[200px]">
+    <div className="relative group flex items-center gap-2 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 max-w-[200px]">
       {/* File icon or image preview */}
       {isImage && attachment.preview ? (
         <img
@@ -124,8 +124,8 @@ const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment, onRem
 
       {/* File info */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-200 truncate font-medium">{attachment.file.name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-200 truncate font-medium">{attachment.file.name}</p>
+        <p className="text-xs text-ink-500">
           {isParsing ? (
             <span className="animate-pulse">Parsing...</span>
           ) : isError ? (
@@ -146,7 +146,7 @@ const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({ attachment, onRem
       {/* Remove button */}
       <button
         onClick={onRemove}
-        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-600 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-ink-600 hover:bg-red-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
       >
         ×
       </button>
@@ -195,7 +195,7 @@ export const DropZoneWrapper: React.FC<DropZoneWrapperProps> = ({
       {...getRootProps()}
       className={`relative transition-all ${
         isDragActive || isDragOver
-          ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-900 rounded-xl"
+          ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-ink-900 rounded-xl"
           : ""
       }`}
     >

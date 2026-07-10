@@ -19,7 +19,7 @@ export const ProviderDashboard: React.FC = () => {
   };
 
   return (
-    <div className="provider-dashboard p-6 bg-gray-50 rounded-lg">
+    <div className="provider-dashboard p-6 bg-ink-50 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Provider Dashboard</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -47,40 +47,40 @@ export const ProviderDashboard: React.FC = () => {
               {stats ? (
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Requests</span>
+                    <span className="text-ink-600">Requests</span>
                     <span className="font-medium">{stats.requests}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Success Rate</span>
+                    <span className="text-ink-600">Success Rate</span>
                     <span className="font-medium">{(stats.successRate * 100).toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Avg Latency</span>
+                    <span className="text-ink-600">Avg Latency</span>
                     <span className="font-medium">{stats.avgLatency.toFixed(0)}ms</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Successes</span>
+                    <span className="text-ink-600">Successes</span>
                     <span className="font-medium">{stats.successes}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Failures</span>
+                    <span className="text-ink-600">Failures</span>
                     <span className="font-medium text-red-600">{stats.failures}</span>
                   </div>
                   {stats.tokens && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tokens Used</span>
+                      <span className="text-ink-600">Tokens Used</span>
                       <span className="font-medium">{stats.tokens}</span>
                     </div>
                   )}
                   {stats.cost && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Estimated Cost</span>
+                      <span className="text-ink-600">Estimated Cost</span>
                       <span className="font-medium">${stats.cost.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm">No data available</p>
+                <p className="text-ink-500 text-sm">No data available</p>
               )}
             </div>
           );

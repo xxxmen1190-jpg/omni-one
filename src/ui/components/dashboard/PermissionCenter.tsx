@@ -32,7 +32,7 @@ export const PermissionCenter: React.FC = () => {
   };
 
   return (
-    <div className="permission-center p-6 bg-gray-50 rounded-lg">
+    <div className="permission-center p-6 bg-ink-50 rounded-lg">
       <h2 className="text-2xl font-bold mb-6">Permission Center</h2>
 
       {/* Permission Grants */}
@@ -40,16 +40,16 @@ export const PermissionCenter: React.FC = () => {
         <h3 className="text-xl font-semibold mb-4">Active Permissions</h3>
         <div className="bg-white rounded-lg shadow p-4">
           {grants.length === 0 ? (
-            <p className="text-gray-500">No active permissions</p>
+            <p className="text-ink-500">No active permissions</p>
           ) : (
             <div className="space-y-2">
               {grants.map((grant) => (
-                <div key={`${grant.toolId}-${grant.permission}`} className="flex justify-between items-center p-3 bg-gray-100 rounded">
+                <div key={`${grant.toolId}-${grant.permission}`} className="flex justify-between items-center p-3 bg-ink-100 rounded">
                   <div>
                     <p className="font-medium">{grant.toolId}</p>
-                    <p className="text-sm text-gray-600">{grant.permission}</p>
+                    <p className="text-sm text-ink-600">{grant.permission}</p>
                     {grant.expiresAt && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-ink-500">
                         Expires: {new Date(grant.expiresAt).toLocaleString()}
                       </p>
                     )}
@@ -72,18 +72,18 @@ export const PermissionCenter: React.FC = () => {
         <h3 className="text-xl font-semibold mb-4">Audit Log</h3>
         <div className="bg-white rounded-lg shadow p-4 max-h-96 overflow-y-auto">
           {auditEntries.length === 0 ? (
-            <p className="text-gray-500">No audit entries</p>
+            <p className="text-ink-500">No audit entries</p>
           ) : (
             <div className="space-y-2">
               {auditEntries.map((entry) => (
-                <div key={entry.id} className="text-sm p-2 border-b border-gray-200">
+                <div key={entry.id} className="text-sm p-2 border-b border-ink-200">
                   <p className="font-medium">
                     {entry.action} - {entry.result.toUpperCase()}
                   </p>
-                  <p className="text-gray-600">
+                  <p className="text-ink-600">
                     {entry.actor} on {entry.resource}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-500">
                     {new Date(entry.timestamp).toLocaleString()}
                   </p>
                 </div>

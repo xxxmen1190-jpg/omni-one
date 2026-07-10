@@ -41,12 +41,12 @@ const JSONWorkspace: React.FC<JSONWorkspaceProps> = ({ content }) => {
   return (
     <div className="rounded-b-lg overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800/50 border-b border-gray-700/50">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-ink-800/50 border-b border-ink-700/50">
         <div className="flex gap-1">
           <button
             onClick={() => setView("formatted")}
             className={`px-2 py-1 text-xs rounded transition-colors ${
-              view === "formatted" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"
+              view === "formatted" ? "bg-purple-600 text-white" : "text-ink-400 hover:text-white"
             }`}
           >
             Formatted
@@ -54,7 +54,7 @@ const JSONWorkspace: React.FC<JSONWorkspaceProps> = ({ content }) => {
           <button
             onClick={() => setView("raw")}
             className={`px-2 py-1 text-xs rounded transition-colors ${
-              view === "raw" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"
+              view === "raw" ? "bg-purple-600 text-white" : "text-ink-400 hover:text-white"
             }`}
           >
             Raw
@@ -66,13 +66,13 @@ const JSONWorkspace: React.FC<JSONWorkspaceProps> = ({ content }) => {
             <span className="text-xs text-red-400">⚠ {error}</span>
           )}
           {json && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-ink-500">
               {Array.isArray(json) ? `${json.length} items` : `${Object.keys(json).length} keys`}
             </span>
           )}
           <button
             onClick={handleCopy}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            className="text-xs text-ink-500 hover:text-ink-300 transition-colors"
           >
             {copied ? "✓ Copied" : "Copy"}
           </button>

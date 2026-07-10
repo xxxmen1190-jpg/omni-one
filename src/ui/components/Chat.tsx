@@ -10,7 +10,6 @@ import { ChatAttachments, AttachedFile, DropZoneWrapper, useClipboardPaste } fro
 import { VoiceButton } from "./VoiceButton";
 import { Phase14Integration } from "../../core/brain/Phase14Integration";
 import { SmartWorkspaceDetector } from "../../core/workspace/SmartWorkspaceDetector";
-import { DocumentGenerator, ExportFormat } from "../../core/export/DocumentGenerator";
 
 const API_KEYS = {
   openai: import.meta.env.VITE_OPENAI_API_KEY ?? "",
@@ -25,16 +24,6 @@ interface ChatProps {
   onToggleSidebar: () => void;
 }
 
-const EXPORT_FORMATS: Array<{ format: ExportFormat; label: string; icon: string }> = [
-  { format: "pdf", label: "PDF", icon: "📄" },
-  { format: "docx", label: "Word", icon: "📝" },
-  { format: "md", label: "Markdown", icon: "📋" },
-  { format: "txt", label: "Text", icon: "📃" },
-  { format: "json", label: "JSON", icon: "🔧" },
-  { format: "csv", label: "CSV", icon: "📊" },
-  { format: "html", label: "HTML", icon: "🌐" },
-];
-
 const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const {
     messages, addMessage, updateLastMessage,
@@ -47,8 +36,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
 
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
-  const [showExportMenu, setShowExportMenu] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+
   const [showDashboard, setShowDashboard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -195,14 +183,6 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
     }
   }, [input, attachments, isLoading, messages, addMessage, updateLastMessage, setLoading, setStreaming, setAbortController, setDisplayMode]);
 
-  const handleExport = useCallback(async (content: string, format: ExportFormat, title?: string) => {
-    setIsExporting(true);
-    try {
-      await DocumentGenerator.download({ content, format, title, filename: `omni-${Date.now()}` });
-    } catch (err) { console.error("Export failed:", err); }
-    finally { setIsExporting(false); setShowExportMenu(null); }
-  }, []);
-
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading;
 
   return (
@@ -212,7 +192,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
         <header className="flex items-center justify-between px-6 py-4 border-b border-ink-800/80 bg-ink-900/40 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
-              <button onClick={onToggleSidebar} className="p-1.5 rounded-lg hover:bg-ink-800 text-ink-400 transition-colors">
+              <button onClick={onToggleSidebar} aria-label="Open sidebar" className="p-1.5 rounded-lg hover:bg-ink-800 text-ink-400 transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
             )}
@@ -226,6 +206,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
               onClick={() => setShowDashboard(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-ink-400 hover:text-ink-200 hover:bg-ink-800 border border-ink-700/50 transition-colors"
               title="System Dashboards"
+              aria-label="Open system dashboards"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" /></svg>
               Dashboards
@@ -254,32 +235,8 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
               </div>
             )}
             {messages.map((m) => (
-              <div key={m.id} className="group relative">
+              <div key={m.id}>
                 <MessageComponent message={{ ...m, displayMode } as EnhancedChatMessage} />
-                {m.role === "assistant" && m.content && (
-                  <div className="absolute -right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowExportMenu(showExportMenu === m.id ? null : m.id)}
-                        disabled={isExporting}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-ink-500 hover:text-ink-200 bg-ink-800 hover:bg-ink-700 border border-ink-700 rounded-lg transition-colors"
-                        title="Export response"
-                      >
-                        <span>↓</span><span>Export</span>
-                      </button>
-                      {showExportMenu === m.id && (
-                        <div className="absolute right-0 top-full mt-1 z-50 bg-ink-800 border border-ink-700 rounded-lg shadow-xl min-w-[140px]">
-                          {EXPORT_FORMATS.map(({ format, label, icon }) => (
-                            <button key={format} onClick={() => handleExport(m.content, format, `Omni One — ${m.content.slice(0, 50)}`)}
-                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-ink-300 hover:bg-ink-700 hover:text-white transition-colors first:rounded-t-lg last:rounded-b-lg">
-                              <span>{icon}</span><span>{label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -324,7 +281,8 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
               <div className="flex items-center justify-between px-3 pb-3">
                 <div className="flex items-center gap-1">
                   <button onClick={() => fileInputRef.current?.click()} disabled={isLoading}
-                    className="flex items-center justify-center w-9 h-9 rounded-lg text-ink-400 hover:text-white hover:bg-ink-700 transition-colors disabled:opacity-50" title="Attach file">
+                    className="flex items-center justify-center w-9 h-9 rounded-lg text-ink-400 hover:text-white hover:bg-ink-700 transition-colors disabled:opacity-50"
+                    title="Attach file" aria-label="Attach file">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                     </svg>
@@ -336,11 +294,11 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
                 </div>
                 <div>
                   {isStreaming ? (
-                    <button onClick={stopGenerating} className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">
+                    <button onClick={stopGenerating} aria-label="Stop generating" className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
                     </button>
                   ) : (
-                    <button onClick={handleSend} disabled={!canSend} className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-900/20">
+                    <button onClick={handleSend} disabled={!canSend} aria-label="Send message" className="w-9 h-9 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-900/20">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                     </button>
                   )}
@@ -366,7 +324,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
           accept=".pdf,.docx,.txt,.csv,.xlsx,.xls,.json,.md,.markdown,.png,.jpg,.jpeg,.gif,.webp,.svg,.zip"
           onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length > 0) handleFilesAdded(files); e.target.value = ""; }} />
 
-        {showExportMenu && <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(null)} />}
+
       </div>
     </DropZoneWrapper>
   );

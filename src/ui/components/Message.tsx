@@ -9,6 +9,7 @@ import React, { Suspense, useState, useCallback } from "react";
 import { EnhancedChatMessage } from "../../types/ux";
 import TransparencyPanel from "./TransparencyPanel";
 import { DocumentGenerator, ExportFormat } from "../../core/export/DocumentGenerator";
+import { Logger } from "../../core/system/Logger";
 
 // Lazy-load SmartWorkspace to avoid blocking initial render
 const SmartWorkspace = React.lazy(() =>
@@ -222,7 +223,7 @@ const MessageComponent: React.FC<MessageProps> = ({ message }) => {
         filename: `omni-${message.id}`,
       });
     } catch (err) {
-      console.error("Export failed:", err);
+      Logger.error("Export failed", { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsExporting(false);
     }
@@ -281,7 +282,8 @@ const MessageComponent: React.FC<MessageProps> = ({ message }) => {
             <button
               onClick={copy}
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-ink-500 hover:text-ink-200 hover:bg-ink-800 transition-colors"
-              title="Copy"
+              title={copied ? "Copied!" : "Copy"}
+              aria-label={copied ? "Copied!" : "Copy to clipboard"}
             >
               {copied ? (
                 <svg className="w-3 h-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,6 +304,8 @@ const MessageComponent: React.FC<MessageProps> = ({ message }) => {
                 disabled={isExporting}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] text-ink-500 hover:text-ink-200 hover:bg-ink-800 transition-colors disabled:opacity-50"
                 title="Export"
+                aria-label="Export response"
+                aria-expanded={showExportMenu}
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
