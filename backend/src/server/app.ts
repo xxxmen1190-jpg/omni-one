@@ -23,6 +23,7 @@ import { healthRoutes } from "../api/routes/health.js";
 import { versionRoutes } from "../api/routes/version.js";
 import { statusRoutes } from "../api/routes/status.js";
 import { chatRoutes } from "../api/routes/chat.js";
+import { unifiedChatRoutes } from "../api/routes/unifiedChat.js";
 import { toolsRoutes } from "../api/routes/tools.js";
 import { agentsRoutes } from "../api/routes/agents.js";
 import { authRoutes } from "../api/routes/auth.js";
@@ -165,6 +166,7 @@ export async function buildApp() {
   await fastify.register(versionRoutes, { prefix: "/" });
   await fastify.register(statusRoutes, { prefix: "/" });
   await fastify.register(chatRoutes, { prefix: "/" });
+  await fastify.register(unifiedChatRoutes, { prefix: "/" });
   await fastify.register(toolsRoutes, { prefix: "/" });
   await fastify.register(agentsRoutes, { prefix: "/" });
   await fastify.register(authRoutes, { prefix: "/" });
