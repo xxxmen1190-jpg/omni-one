@@ -32,6 +32,8 @@ import { filesRoutes } from "../api/routes/files.js";
 import { metricsRoutes } from "../api/routes/metrics.js";
 import { feedbackRoutes } from "../api/routes/feedback.js";
 import { adminRoutes } from "../api/routes/admin.js";
+import { marketplaceRoutes } from "../api/routes/marketplace.js";
+import { publicApiRoutes } from "../api/routes/publicApi.js";
 import { authRateLimitConfig } from "../middleware/security.js";
 import { metricsService } from "../services/metricsService.js";
 
@@ -175,6 +177,8 @@ export async function buildApp() {
     prefix: "/",
     config: { rateLimit: authRateLimitConfig } // Stricter limits for admin
   });
+  await fastify.register(marketplaceRoutes, { prefix: "/" });
+  await fastify.register(publicApiRoutes, { prefix: "/api" });
 
   // ── Error Handler ───────────────────────────────────────────────────────────
   fastify.setErrorHandler(errorHandler);
