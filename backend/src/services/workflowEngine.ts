@@ -102,6 +102,10 @@ class WorkflowEngineClass {
       case "search": return { results: ["Result 1", "Result 2"] };
       case "summarize": return { summary: "This is a summary of the input." };
       case "save_memory": return { status: "saved" };
+      case "manus_task": {
+        const { manusAgent } = await import("./manusAgent.js");
+        return await manusAgent.runAutonomousTask("system", node.params.objective);
+      }
       default: return { status: "ok" };
     }
   }

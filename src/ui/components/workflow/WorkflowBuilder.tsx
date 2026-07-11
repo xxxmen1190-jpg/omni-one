@@ -73,7 +73,7 @@ export const WorkflowBuilder: React.FC = () => {
       <aside className="absolute right-6 top-24 w-64 bg-ink-900 border border-ink-800 rounded-2xl p-4 shadow-2xl">
         <h3 className="text-xs font-black text-ink-500 uppercase mb-4 tracking-widest">Available Nodes</h3>
         <div className="space-y-2">
-          {["Trigger", "Condition", "Loop", "Search", "Summarize", "Email", "Memory", "Export"].map((type) => (
+          { ["Trigger", "Condition", "Loop", "Search", "Summarize", "Email", "Memory", "Export", "Manus Task"].map((type) => (
             <div key={type} className="p-3 bg-ink-800 rounded-xl border border-ink-700 flex items-center justify-between group cursor-pointer hover:bg-ink-700 transition-all">
               <span className="text-xs font-bold text-ink-200">{type}</span>
               <span className="text-ink-500 group-hover:text-blue-400 transition-colors">+</span>

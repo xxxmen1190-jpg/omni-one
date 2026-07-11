@@ -26,10 +26,10 @@ class MultiAgentOrchestratorClass {
     logger.info({ userId, goal: task.goal }, "Starting multi-agent collaboration");
 
     const workflow = [
-      { agent: "Research Agent", action: "Gather data" },
-      { agent: "Planning Agent", action: "Create structure" },
-      { agent: "Coding Agent", action: "Implement solution" },
-      { agent: "Review Agent", action: "Verify quality" },
+      { agent: "Research Agent", action: "Gather data", provider: "Manus" },
+      { agent: "Planning Agent", action: "Create structure", provider: "Claude" },
+      { agent: "Coding Agent", action: "Implement solution", provider: "GPT-4" },
+      { agent: "Review Agent", action: "Verify quality", provider: "GPT-4" },
     ];
 
     const results = [];
@@ -44,10 +44,11 @@ class MultiAgentOrchestratorClass {
       // Simulate agent execution
       const result = {
         agent: member.name,
-        output: `Completed ${step.action} based on context.`,
-        confidence: 0.92,
-        cost: 0.005,
-        latency: 1200,
+        provider: (step as any).provider,
+        output: `Completed ${step.action} using ${(step as any).provider} based on context.`,
+        confidence: member.name === "Research Agent" ? 0.98 : 0.92,
+        cost: member.name === "Research Agent" ? 0.015 : 0.005,
+        latency: member.name === "Research Agent" ? 2500 : 1200,
       };
 
       results.push(result);

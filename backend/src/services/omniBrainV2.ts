@@ -10,6 +10,7 @@
 
 import { logger } from "../utils/logger.js";
 import { advancedMemoryService, MemoryType } from "./advancedMemoryService.js";
+import { manusAgent } from "./manusAgent.js";
 
 export interface PlanStep {
   id: string;
@@ -21,10 +22,36 @@ export interface PlanStep {
 
 class OmniBrainV2Class {
   /**
+   * Determine if a task should be routed to Manus AI.
+   */
+  shouldRouteToManus(goal: string): boolean {
+    const manusKeywords = [
+      "build project", "create application", "autonomous", "research for several minutes",
+      "analyze repository", "create documentation", "multi-stage workflow", "web automation",
+      "complex analysis", "long-running"
+    ];
+    return manusKeywords.some(keyword => goal.toLowerCase().includes(keyword));
+  }
+
+  /**
    * Create a multi-step plan for a complex goal.
    */
   async createPlan(userId: string, goal: string): Promise<PlanStep[]> {
     logger.info({ userId, goal }, "Creating complex plan");
+
+    if (this.shouldRouteToManus(goal)) {
+      logger.info("Routing complex goal to Manus Agent");
+      const manusResult = await manusAgent.runAutonomousTask(userId, goal);
+      return [
+        { 
+          id: "manus-auto", 
+          task: "Autonomous execution via Manus AI", 
+          dependencies: [], 
+          status: "COMPLETED",
+          result: manusResult.output
+        }
+      ];
+    }
     
     // In a real implementation, this would call a high-reasoning LLM (e.g., GPT-4o, Claude 3.5 Sonnet)
     // to decompose the goal into steps.
