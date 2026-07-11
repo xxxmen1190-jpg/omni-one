@@ -1,71 +1,70 @@
 /**
  * Manus Agent — Omni One Backend
- * 
- * Specialized agent for deep research, autonomous execution, 
- * and complex project analysis using Manus AI.
+ *
+ * Specialized agent for deep research, autonomous execution,
+ * and complex project analysis using Manus AI v2 API.
  */
-
 import { logger } from "../utils/logger.js";
 import { manusProvider } from "../providers/ManusProvider.js";
 import { AppError } from "../types/index.js";
 
 export interface ManusTaskResult {
   status: "COMPLETED" | "FAILED" | "IN_PROGRESS";
+  taskId: string;
+  taskUrl: string;
   output: string;
   steps?: string[];
   artifacts?: string[];
   cost: number;
+  endpointsCalled: string[];
+  durationMs: number;
 }
 
 class ManusAgentClass {
   /**
-   * Execute an autonomous task using Manus.
+   * Execute an autonomous task using Manus API v2.
+   * Makes REAL HTTP calls to https://api.manus.ai
    */
-  async runAutonomousTask(userId: string, task: string, context: any = {}): Promise<ManusTaskResult> {
-    logger.info({ userId, task: task.slice(0, 50) }, "Manus Agent starting autonomous task");
+  async runAutonomousTask(
+    userId: string,
+    task: string,
+    context: { apiKey?: string; tools?: unknown[] } = {}
+  ): Promise<ManusTaskResult> {
+    logger.info({ userId, task: task.slice(0, 80) }, "[ManusAgent] Starting autonomous task");
 
     try {
-      // 1. Analyze and Plan
-      const systemPrompt = `You are the Omni One Autonomous Agent powered by Manus. 
-      Your goal is to complete the user's task end-to-end. 
-      You have access to web search, code execution, and file analysis.`;
-
-      // 2. Execute via Manus Provider
       const result = await manusProvider.execute({
         prompt: task,
-        systemPrompt,
-        tools: context.tools || [],
+        tools: context.tools ?? [],
+        apiKey: context.apiKey,
       });
 
-      // 3. Process Result
       return {
         status: "COMPLETED",
+        taskId: result.id,
+        taskUrl: result.taskUrl,
         output: result.content,
-        steps: ["Analyzed requirements", "Performed deep research", "Generated solution"],
+        steps: ["Task created via Manus API", "Polled task.listMessages", "Task completed"],
         cost: await manusProvider.estimateCost(result.usage.total_tokens),
+        endpointsCalled: result.endpointsCalled,
+        durationMs: result.durationMs,
       };
     } catch (error) {
-      logger.error({ userId, error }, "Manus Agent task failed");
-      throw new AppError("Manus Agent failed to complete autonomous task", 500);
+      logger.error({ userId, error }, "[ManusAgent] Task failed");
+      throw new AppError("Manus Agent failed to complete autonomous task", 500, "INTERNAL_ERROR");
     }
   }
 
-  /**
-   * Deep Project Analysis.
-   */
-  async analyzeProject(userId: string, projectId: string) {
-    logger.info({ userId, projectId }, "Manus Agent analyzing project repository");
-    
-    return await this.runAutonomousTask(userId, `Analyze the entire project structure and documentation for project ID: ${projectId}`);
+  async analyzeProject(userId: string, projectId: string, apiKey?: string) {
+    return this.runAutonomousTask(
+      userId,
+      `Analyze the entire project structure and documentation for project ID: ${projectId}`,
+      { apiKey }
+    );
   }
 
-  /**
-   * Web Automation Task.
-   */
-  async executeWebAutomation(userId: string, objective: string) {
-    logger.info({ userId, objective }, "Manus Agent starting web automation");
-    
-    return await this.runAutonomousTask(userId, `Perform the following web automation task: ${objective}`);
+  async executeWebAutomation(userId: string, objective: string, apiKey?: string) {
+    return this.runAutonomousTask(userId, `Perform the following web automation task: ${objective}`, { apiKey });
   }
 }
 
