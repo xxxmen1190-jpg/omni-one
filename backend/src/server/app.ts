@@ -35,6 +35,10 @@ import { feedbackRoutes } from "../api/routes/feedback.js";
 import { adminRoutes } from "../api/routes/admin.js";
 import { marketplaceRoutes } from "../api/routes/marketplace.js";
 import { publicApiRoutes } from "../api/routes/publicApi.js";
+import { visionRoutes } from "../api/routes/vision.js";
+import { voiceRoutes } from "../api/routes/voice.js";
+import { imageGenRoutes } from "../api/routes/imageGen.js";
+import { chatStreamRoutes } from "../api/routes/chatStream.js";
 import { authRateLimitConfig } from "../middleware/security.js";
 import { metricsService } from "../services/metricsService.js";
 
@@ -180,6 +184,10 @@ export async function buildApp() {
     config: { rateLimit: authRateLimitConfig } // Stricter limits for admin
   });
   await fastify.register(marketplaceRoutes, { prefix: "/" });
+  await fastify.register(visionRoutes, { prefix: "/" });
+  await fastify.register(voiceRoutes, { prefix: "/" });
+  await fastify.register(imageGenRoutes, { prefix: "/" });
+  await fastify.register(chatStreamRoutes, { prefix: "/" });
   await fastify.register(publicApiRoutes, { prefix: "/api" });
 
   // ── Error Handler ───────────────────────────────────────────────────────────
