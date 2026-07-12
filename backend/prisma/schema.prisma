@@ -3,12 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
-  engineType = "binary"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
   extensions = [pgvector(map: "vector")]
 }
 
@@ -312,218 +311,218 @@ model Notification {
   @@index([read])
 }
 
-310	// ─── Phase 19: Beta & Feedback ────────────────────────────────────────────────
-311	
-312	model Feedback {
-313	  id             String       @id @default(uuid())
-314	  userId         String
-315	  conversationId String?
-316	  messageId      String?
-317	  
-318	  rating         Int          // 1 (👍) or -1 (👎)
-319	  comment        String?      @db.Text
-320	  
-321	  // Context for evaluation
-322	  model          String?
-323	  provider       String?
-324	  toolsUsed      String[]
-325	  confidence     Float?
-326	  metadata       Json?        // Full evaluation metrics (relevance, etc.)
-327	  
-328	  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-329	  
-330	  createdAt      DateTime     @default(now())
-331	
-332	  @@index([userId])
-333	  @@index([conversationId])
-334	  @@index([messageId])
-335	}
-336	
-337	model BetaInvite {
-338	  id          String    @id @default(uuid())
-339	  code        String    @unique
-340	  email       String?   // Optional target email
-341	  maxUses     Int       @default(1)
-342	  uses        Int       @default(0)
-343	  expiresAt   DateTime?
-344	  createdBy   String?
-345	  
-346	  createdAt   DateTime  @default(now())
-347	  updatedAt   DateTime  @updatedAt
-348	
-349	  @@index([code])
-350	}
-351	
-352	model FeatureFlag {
-353	  id          String   @id @default(uuid())
-354	  name        String   @unique
-355	  description String?
-356	  isEnabled   Boolean  @default(false)
-357	  rules       Json?    // User IDs, roles, or percentages
-358	  
-359	  createdAt   DateTime @default(now())
-360	  updatedAt   DateTime @updatedAt
-361	
-362	  @@index([name])
-363	}
-364	
-365	// Add relation to User model (note: this requires an edit to the User model as well, 
-366	// but Prisma doesn't strictly require it in the schema if not used inversely)
-367	
+// ─── Phase 19: Beta & Feedback ────────────────────────────────────────────────
 
-368	// ─── Phase 20: Platform & Ecosystem ──────────────────────────────────────────
-369	
-370	model MarketplaceItem {
-371	  id              String         @id @default(uuid())
-372	  type            MarketplaceType
-373	  name            String
-374	  description     String         @db.Text
-375	  manifest        Json           // Permissions, required tools, models, etc.
-376	  version         String
-377	  author          String
-378	  category        String
-379	  tags            String[]
-380	  iconUrl         String?
-381	  bannerUrl       String?
-382	  
-383	  rating          Float          @default(0)
-384	  reviewCount     Int            @default(0)
-385	  installCount    Int            @default(0)
-386	  
-387	  isFeatured      Boolean        @default(false)
-388	  isTrending      Boolean        @default(false)
-389	  
-390	  changelog       Json?          // Version history
-391	  
-392	  installations   MarketplaceInstallation[]
-393	  reviews         MarketplaceReview[]
-394	  
-395	  createdAt       DateTime       @default(now())
-396	  updatedAt       DateTime       @updatedAt
-397	
-398	  @@index([type])
-399	  @@index([category])
-400	  @@index([author])
-401	}
-402	
-403	enum MarketplaceType {
-404	  AGENT
-405	  SKILL
-406	  PLUGIN
-407	}
-408	
-409	model MarketplaceInstallation {
-410	  id              String          @id @default(uuid())
-411	  userId          String
-412	  itemId          String
-413	  version         String
-414	  isEnabled       Boolean         @default(true)
-415	  config          Json?           // User-specific configuration
-416	  
-417	  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-418	  item            MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-419	  
-420	  installedAt     DateTime        @default(now())
-421	  updatedAt       DateTime        @updatedAt
-422	
-423	  @@unique([userId, itemId])
-424	  @@index([userId])
-425	  @@index([itemId])
-426	}
-427	
-428	model MarketplaceReview {
-429	  id              String          @id @default(uuid())
-430	  userId          String
-431	  itemId          String
-432	  rating          Int
-433	  comment         String?         @db.Text
-434	  
-435	  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-436	  item            MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-437	  
-438	  createdAt       DateTime        @default(now())
-439	
-440	  @@index([userId])
-441	  @@index([itemId])
-442	}
-443	
-444	model Workflow {
-445	  id              String          @id @default(uuid())
-446	  userId          String
-447	  name            String
-448	  description     String?
-449	  definition      Json            // Nodes, edges, conditions, loops
-450	  status          WorkflowStatus  @default(DRAFT)
-451	  
-452	  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-453	  executions      WorkflowExecution[]
-454	  
-455	  createdAt       DateTime        @default(now())
-456	  updatedAt       DateTime        @updatedAt
-457	
-458	  @@index([userId])
-459	}
-460	
-461	enum WorkflowStatus {
-462	  DRAFT
-463	  ACTIVE
-464	  PAUSED
-465	  DEPRECATED
-466	}
-467	
-468	model WorkflowExecution {
-469	  id              String          @id @default(uuid())
-470	  workflowId      String
-471	  userId          String
-472	  status          ExecutionStatus @default(PENDING)
-473	  input           Json?
-474	  output          Json?
-475	  logs            Json?
-476	  
-477	  workflow        Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-478	  
-479	  startedAt       DateTime?
-480	  finishedAt      DateTime?
-481	  createdAt       DateTime        @default(now())
-482	
-483	  @@index([workflowId])
-484	  @@index([userId])
-485	}
-486	
-487	enum ExecutionStatus {
-488	  PENDING
-489	  RUNNING
-490	  COMPLETED
-491	  FAILED
-492	  CANCELLED
-493	}
-494	
-495	model AdvancedMemory {
-496	  id              String          @id @default(uuid())
-497	  userId          String
-498	  type            MemoryType
-499	  content         String          @db.Text
-500	  embedding       Unsupported("vector(1536)")?
-501	  importance      Float           @default(1.0)
-502	  decay           Float           @default(1.0)
-503	  lastAccessedAt  DateTime        @default(now())
-504	  metadata        Json?
-505	  
-506	  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-507	  
-508	  createdAt       DateTime        @default(now())
-509	  updatedAt       DateTime        @updatedAt
-510	
-511	  @@index([userId])
-512	  @@index([type])
-513	}
-514	
-515	enum MemoryType {
-516	  WORKING
-517	  SESSION
-518	  LONG_TERM
-519	  PROJECT
-520	  SEMANTIC
-521	  PREFERENCE
-522	}
-523	
+model Feedback {
+  id             String       @id @default(uuid())
+  userId         String
+  conversationId String?
+  messageId      String?
+  
+  rating         Int          // 1 (👍) or -1 (👎)
+  comment        String?      @db.Text
+  
+  // Context for evaluation
+  model          String?
+  provider       String?
+  toolsUsed      String[]
+  confidence     Float?
+  metadata       Json?        // Full evaluation metrics (relevance, etc.)
+  
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime     @default(now())
+
+  @@index([userId])
+  @@index([conversationId])
+  @@index([messageId])
+}
+
+model BetaInvite {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  email       String?   // Optional target email
+  maxUses     Int       @default(1)
+  uses        Int       @default(0)
+  expiresAt   DateTime?
+  createdBy   String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([code])
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isEnabled   Boolean  @default(false)
+  rules       Json?    // User IDs, roles, or percentages
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+// Add relation to User model (note: this requires an edit to the User model as well, 
+// but Prisma doesn't strictly require it in the schema if not used inversely)
+
+
+// ─── Phase 20: Platform & Ecosystem ──────────────────────────────────────────
+
+model MarketplaceItem {
+  id              String         @id @default(uuid())
+  type            MarketplaceType
+  name            String
+  description     String         @db.Text
+  manifest        Json           // Permissions, required tools, models, etc.
+  version         String
+  author          String
+  category        String
+  tags            String[]
+  iconUrl         String?
+  bannerUrl       String?
+  
+  rating          Float          @default(0)
+  reviewCount     Int            @default(0)
+  installCount    Int            @default(0)
+  
+  isFeatured      Boolean        @default(false)
+  isTrending      Boolean        @default(false)
+  
+  changelog       Json?          // Version history
+  
+  installations   MarketplaceInstallation[]
+  reviews         MarketplaceReview[]
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@index([author])
+}
+
+enum MarketplaceType {
+  AGENT
+  SKILL
+  PLUGIN
+}
+
+model MarketplaceInstallation {
+  id              String          @id @default(uuid())
+  userId          String
+  itemId          String
+  version         String
+  isEnabled       Boolean         @default(true)
+  config          Json?           // User-specific configuration
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item            MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  installedAt     DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}
+
+model MarketplaceReview {
+  id              String          @id @default(uuid())
+  userId          String
+  itemId          String
+  rating          Int
+  comment         String?         @db.Text
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item            MarketplaceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime        @default(now())
+
+  @@index([userId])
+  @@index([itemId])
+}
+
+model Workflow {
+  id              String          @id @default(uuid())
+  userId          String
+  name            String
+  description     String?
+  definition      Json            // Nodes, edges, conditions, loops
+  status          WorkflowStatus  @default(DRAFT)
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  executions      WorkflowExecution[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DEPRECATED
+}
+
+model WorkflowExecution {
+  id              String          @id @default(uuid())
+  workflowId      String
+  userId          String
+  status          ExecutionStatus @default(PENDING)
+  input           Json?
+  output          Json?
+  logs            Json?
+  
+  workflow        Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime        @default(now())
+
+  @@index([workflowId])
+  @@index([userId])
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model AdvancedMemory {
+  id              String          @id @default(uuid())
+  userId          String
+  type            MemoryType
+  content         String          @db.Text
+  embedding       Unsupported("vector(1536)")?
+  importance      Float           @default(1.0)
+  decay           Float           @default(1.0)
+  lastAccessedAt  DateTime        @default(now())
+  metadata        Json?
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([type])
+}
+
+enum MemoryType {
+  WORKING
+  SESSION
+  LONG_TERM
+  PROJECT
+  SEMANTIC
+  PREFERENCE
+}
+

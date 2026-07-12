@@ -1,0 +1,103 @@
+{
+  "steps": [
+    {
+      "name": "Backend Health",
+      "status": "PASS",
+      "data": {
+        "status": "degraded",
+        "manus_env_key": "configured",
+        "providers": {
+          "openai": "available",
+          "anthropic": "unconfigured",
+          "gemini": "unconfigured",
+          "groq": "unconfigured",
+          "openrouter": "unconfigured"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Manus API Key Validation",
+      "status": "PASS",
+      "data": {
+        "valid": true,
+        "http_status": 200
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Create a small React landing page'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": true,
+        "expected": true,
+        "hint": "manus"
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Build a full project with authentic'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": true,
+        "expected": true,
+        "hint": "manus"
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Explain quantum computing briefly'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": false,
+        "expected": false,
+        "hint": "claude/openai"
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Write a haiku'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": false,
+        "expected": false,
+        "hint": "openai/claude"
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Automate a workflow'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": true,
+        "expected": true,
+        "hint": "manus"
+      },
+      "error": null
+    },
+    {
+      "name": "SmartSelector: 'Quick: what is 2+2?'",
+      "status": "PASS",
+      "data": {
+        "requiresManus": false,
+        "expected": false,
+        "hint": "groq/openai"
+      },
+      "error": null
+    },
+    {
+      "name": "E2E: Manus Execution",
+      "status": "TIMEOUT",
+      "data": null,
+      "error": "Timed out after 600s"
+    },
+    {
+      "name": "Fallback: No Provider",
+      "status": "FAIL",
+      "data": null,
+      "error": "HTTPConnectionPool(host='localhost', port=3001): Read timed out. (read timeout=5)"
+    }
+  ],
+  "overall": "TIMEOUT",
+  "manus_response": null
+}

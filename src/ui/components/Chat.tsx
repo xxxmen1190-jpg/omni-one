@@ -1,10 +1,22 @@
 /**
  * Chat Component — Omni One Frontend
  *
- * Updated to use Unified AI Gateway (Backend API) instead of direct provider calls.
- * All requests go through: Frontend → Backend → OmniBrain → Smart Provider Selector → Manus/LLM → Result
+ * Phase 20.6 — Unified AI Gateway Integration
  *
- * Pro Mode: Shows provider selection metadata (provider, reason, confidence, endpoints)
+ * All requests flow through:
+ *   Frontend → Backend API (/unified-chat) → OmniBrain → SmartProviderSelector
+ *   → Manus | Claude | OpenAI | Gemini | Groq | Mistral | DeepSeek
+ *   → Response → Frontend
+ *
+ * Pro Mode: Shows provider selection metadata (provider, reason, confidence,
+ *           execution time, task analysis, endpoints called).
+ *
+ * Fixes applied (Phase 20.6):
+ *   - URL: /unified-chat (not /api/unified-chat — base already includes /api)
+ *   - Response: apiClient.post<T> returns T directly (not {success, data})
+ *   - Timeout: 600 000 ms for long-running Manus tasks
+ *   - Manus API key forwarded via VITE_MANUS_API_KEY env var
+ *   - Fallback info shown in Pro Mode when primary provider fails
  */
 
 import React, { useState, useRef, useEffect, useCallback, Suspense } from "react";
@@ -17,18 +29,36 @@ import { VoiceButton } from "./VoiceButton";
 import { SmartWorkspaceDetector } from "../../core/workspace/SmartWorkspaceDetector";
 import { apiClient } from "../../lib/api/client";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface TaskAnalysis {
+  type: string;
+  complexity: string;
+  requiresManus: boolean;
+  estimatedDuration: string;
+}
+
 interface ProviderMetadata {
   provider: string;
   model: string;
   reason: string;
   confidence: number;
   durationMs: number;
-  taskAnalysis?: {
-    type: string;
-    complexity: string;
-    requiresManus: boolean;
-    estimatedDuration: string;
-  };
+  taskAnalysis?: TaskAnalysis;
+  fallbackProviders?: string[];
+  endpointsCalled?: string[];
+}
+
+/** Shape returned by POST /unified-chat (already unwrapped from ApiSuccessResponse by apiClient) */
+interface UnifiedChatResponse {
+  content: string;
+  conversationId: string;
+  provider: string;
+  model: string;
+  reason: string;
+  confidence: number;
+  durationMs: number;
+  taskAnalysis?: TaskAnalysis;
   fallbackProviders?: string[];
   endpointsCalled?: string[];
 }
@@ -37,6 +67,8 @@ interface ChatProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
   const {
@@ -84,7 +116,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
     }));
     setAttachments((prev) => [...prev, ...newAttachments]);
 
-    // For now, mark as ready (in production, would parse files)
+    // Mark as ready (file parsing happens server-side)
     setAttachments((prev) =>
       prev.map((a) =>
         newAttachments.some((na) => na.id === a.id) ? { ...a, status: "ready" as const } : a
@@ -137,50 +169,50 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
     setStreaming(true);
 
     try {
-      // ── Call Unified Chat API (Backend) ────────────────────────────────────
-      const response = await apiClient.post<{
-        content: string;
-        provider: string;
-        model: string;
-        reason: string;
-        confidence: number;
-        durationMs: number;
-        taskAnalysis?: any;
-        fallbackProviders?: string[];
-        endpointsCalled?: string[];
-      }>("/api/unified-chat", {
-        message: userContent || "Please analyze these files.",
-        conversationId: `conv-${Date.now()}`,
-        proBrainMode, // Send Pro Mode flag to backend
-      });
+      // ── Unified AI Gateway ─────────────────────────────────────────────────
+      // Flow: Frontend → /unified-chat → OmniBrain → SmartProviderSelector
+      //       → Manus | Claude | OpenAI | Gemini | Groq → Response
+      //
+      // NOTE: apiClient base is already http://host/api, so path is /unified-chat
+      //       (not /api/unified-chat which would double the prefix).
+      //
+      // Timeout is 10 minutes to accommodate long-running Manus autonomous tasks.
+      const data = await apiClient.post<UnifiedChatResponse>(
+        "/unified-chat",
+        {
+          message: userContent || "Please analyze these files.",
+          conversationId: `conv-${Date.now()}`,
+          proBrainMode,
+          // Forward Manus API key so backend can use it even if not set in server env
+          manusApiKey: (import.meta.env.VITE_MANUS_API_KEY as string | undefined) || undefined,
+        },
+        {
+          signal: controller.signal,
+          timeoutMs: 600_000, // 10 minutes — Manus tasks can take several minutes
+        }
+      );
 
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || "Failed to get response");
-      }
-
-      const { content, provider, model, reason, confidence, durationMs, taskAnalysis, fallbackProviders, endpointsCalled } = response.data;
-
-      // Store metadata for Pro Mode display
+      // Store provider metadata for Pro Mode display
       if (proBrainMode) {
         setProviderMetadata({
-          provider,
-          model,
-          reason,
-          confidence,
-          durationMs,
-          taskAnalysis,
-          fallbackProviders,
-          endpointsCalled,
+          provider: data.provider,
+          model: data.model,
+          reason: data.reason,
+          confidence: data.confidence,
+          durationMs: data.durationMs,
+          taskAnalysis: data.taskAnalysis,
+          fallbackProviders: data.fallbackProviders,
+          endpointsCalled: data.endpointsCalled,
         });
       }
 
-      // Detect workspace type
-      const detection = SmartWorkspaceDetector.detect(userContent, content);
-      updateLastMessage(content, {
+      // Detect workspace type for smart rendering
+      const detection = SmartWorkspaceDetector.detect(userContent, data.content);
+      updateLastMessage(data.content, {
         workspaceType: detection.type,
         workspaceLanguage: detection.language,
-        provider,
-        model,
+        provider: data.provider,
+        model: data.model,
       });
 
       setStreaming(false);
@@ -188,7 +220,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
       setAbortController(null);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      updateLastMessage(`Error: ${errorMsg}`);
+      updateLastMessage(`⚠️ Error: ${errorMsg}`);
       setStreaming(false);
       setLoading(false);
       setAbortController(null);
@@ -197,10 +229,23 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
 
   const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading;
 
+  // ─── Provider badge colour ──────────────────────────────────────────────────
+  const providerBadgeClass = (provider: string) => {
+    const map: Record<string, string> = {
+      manus: "bg-purple-900/40 border-purple-500/40 text-purple-300",
+      claude: "bg-orange-900/40 border-orange-500/40 text-orange-300",
+      openai: "bg-green-900/40 border-green-500/40 text-green-300",
+      gemini: "bg-blue-900/40 border-blue-500/40 text-blue-300",
+      groq: "bg-yellow-900/40 border-yellow-500/40 text-yellow-300",
+      openrouter: "bg-pink-900/40 border-pink-500/40 text-pink-300",
+    };
+    return map[provider.toLowerCase()] ?? "bg-ink-800 border-ink-600 text-ink-300";
+  };
+
   return (
     <DropZoneWrapper onFilesAdded={handleFilesAdded} disabled={isLoading}>
       <div className="flex flex-col h-full">
-        {/* Header */}
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-ink-800/80 bg-ink-900/40 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             {!sidebarOpen && (
@@ -228,7 +273,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
                   ? "bg-blue-900/30 border-blue-500/50 text-blue-300"
                   : "text-ink-400 hover:text-ink-200 hover:bg-ink-800 border-ink-700/50"
               }`}
-              title={proBrainMode ? "Pro Brain Mode: ON" : "Pro Brain Mode: OFF"}
+              title={proBrainMode ? "Pro Brain Mode: ON — showing provider metadata" : "Pro Brain Mode: OFF"}
               aria-label="Toggle Pro Brain Mode"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +301,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
           </Suspense>
         )}
 
-        {/* Messages */}
+        {/* ── Messages ───────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 scrollbar-thin">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 && (
@@ -265,53 +310,96 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
                   O
                 </div>
                 <h2 className="text-2xl font-bold text-ink-100 mb-2">Welcome to Omni One</h2>
-                <p className="text-ink-400 max-w-md">Unified AI Gateway. Ask anything, and the best provider will be selected automatically.</p>
+                <p className="text-ink-400 max-w-md">
+                  Unified AI Gateway — every message is routed through OmniBrain to the best provider automatically.
+                </p>
                 <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                  {["🤖 Smart Provider Selection", "🧠 Manus for Complex Tasks", "⚡ Claude for Reasoning", "🎯 GPT-4o for General", "📊 Analyze Data", "💻 Write Code"].map(
-                    (hint) => (
-                      <span key={hint} className="text-xs px-3 py-1.5 rounded-full bg-ink-800 text-ink-400 border border-ink-700">
-                        {hint}
-                      </span>
-                    )
-                  )}
+                  {[
+                    "🤖 Smart Provider Selection",
+                    "🧠 Manus for Complex Tasks",
+                    "⚡ Claude for Reasoning",
+                    "🎯 GPT-4o for General",
+                    "📊 Analyze Data",
+                    "💻 Write Code",
+                  ].map((hint) => (
+                    <span key={hint} className="text-xs px-3 py-1.5 rounded-full bg-ink-800 text-ink-400 border border-ink-700">
+                      {hint}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
+
             {messages.map((m) => (
               <div key={m.id}>
                 <MessageComponent message={{ ...m, displayMode } as EnhancedChatMessage} />
               </div>
             ))}
 
-            {/* Pro Mode: Provider Metadata Display */}
+            {/* ── Pro Mode: Provider Metadata Panel ──────────────────────────── */}
             {proBrainMode && providerMetadata && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mt-4 text-xs text-blue-200 space-y-2">
-                <div className="font-semibold text-blue-300">🧠 Provider Selection (Pro Mode)</div>
-                <div className="grid grid-cols-2 gap-2">
+              <div className={`border rounded-xl p-4 mt-4 text-xs space-y-3 ${providerBadgeClass(providerMetadata.provider)}`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-sm">🧠 OmniBrain — Provider Selection</span>
+                  <span className="font-mono opacity-70">{providerMetadata.durationMs.toLocaleString()} ms</span>
+                </div>
+
+                {/* Primary info grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                   <div>
-                    <span className="text-blue-400">Provider:</span> {providerMetadata.provider}
+                    <span className="opacity-60">Provider</span>
+                    <div className="font-semibold capitalize">{providerMetadata.provider}</div>
                   </div>
                   <div>
-                    <span className="text-blue-400">Model:</span> {providerMetadata.model}
+                    <span className="opacity-60">Model</span>
+                    <div className="font-mono">{providerMetadata.model}</div>
                   </div>
                   <div>
-                    <span className="text-blue-400">Confidence:</span> {(providerMetadata.confidence * 100).toFixed(0)}%
+                    <span className="opacity-60">Confidence</span>
+                    <div className="font-semibold">{(providerMetadata.confidence * 100).toFixed(0)}%</div>
                   </div>
                   <div>
-                    <span className="text-blue-400">Duration:</span> {providerMetadata.durationMs}ms
+                    <span className="opacity-60">Execution Time</span>
+                    <div className="font-mono">{providerMetadata.durationMs.toLocaleString()} ms</div>
                   </div>
                 </div>
-                <div>
-                  <span className="text-blue-400">Reason:</span> {providerMetadata.reason}
+
+                {/* Reason */}
+                <div className="p-2 rounded-lg bg-black/20">
+                  <span className="opacity-60">Why this provider: </span>
+                  <span>{providerMetadata.reason}</span>
                 </div>
+
+                {/* Task Analysis */}
                 {providerMetadata.taskAnalysis && (
-                  <div className="mt-2 p-2 bg-blue-900/30 rounded">
-                    <span className="text-blue-400">Task Analysis:</span> {providerMetadata.taskAnalysis.type} ({providerMetadata.taskAnalysis.complexity})
+                  <div className="p-2 rounded-lg bg-black/20 space-y-1">
+                    <div className="opacity-60 font-semibold">Task Analysis</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div><span className="opacity-60">Type: </span>{providerMetadata.taskAnalysis.type}</div>
+                      <div><span className="opacity-60">Complexity: </span>{providerMetadata.taskAnalysis.complexity}</div>
+                      <div><span className="opacity-60">Requires Manus: </span>{providerMetadata.taskAnalysis.requiresManus ? "Yes" : "No"}</div>
+                      <div><span className="opacity-60">Est. Duration: </span>{providerMetadata.taskAnalysis.estimatedDuration}</div>
+                    </div>
                   </div>
                 )}
+
+                {/* Fallback providers */}
+                {providerMetadata.fallbackProviders && providerMetadata.fallbackProviders.length > 0 && (
+                  <div>
+                    <span className="opacity-60">Fallback chain: </span>
+                    {providerMetadata.fallbackProviders.map((p) => (
+                      <span key={p} className="inline-block mr-1 px-1.5 py-0.5 rounded bg-black/20 font-mono capitalize">{p}</span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Manus endpoints */}
                 {providerMetadata.endpointsCalled && providerMetadata.endpointsCalled.length > 0 && (
-                  <div className="mt-2 p-2 bg-blue-900/30 rounded">
-                    <span className="text-blue-400">Endpoints:</span> {providerMetadata.endpointsCalled.join(", ")}
+                  <div className="p-2 rounded-lg bg-black/20">
+                    <div className="opacity-60 font-semibold mb-1">Manus Endpoints Called</div>
+                    {providerMetadata.endpointsCalled.map((ep) => (
+                      <div key={ep} className="font-mono text-[10px] opacity-80">{ep}</div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -321,7 +409,7 @@ const Chat: React.FC<ChatProps> = ({ sidebarOpen, onToggleSidebar }) => {
           </div>
         </div>
 
-        {/* Input Area */}
+        {/* ── Input Area ─────────────────────────────────────────────────────── */}
         <div className="px-4 md:px-8 pb-5 pt-2">
           <div className="max-w-3xl mx-auto">
             {agentProgress && (
